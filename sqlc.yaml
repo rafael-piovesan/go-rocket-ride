@@ -1,0 +1,10 @@
+version: 1
+packages:
+  - name: "datastore"
+    path: "./adapters/datastore"    
+    engine: "postgresql"
+    schema: "./db/migrations"
+    queries: "./db/queries"
+overrides:
+  - column: "audit_records.origin_ip"
+    go_type: "string"
