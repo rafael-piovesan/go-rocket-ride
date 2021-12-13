@@ -1,0 +1,1 @@
+All SQL schemas were extracted from: https://brandur.org/idempotency-keys
