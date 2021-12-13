@@ -1,0 +1,9 @@
+- id: {{$.RideId}}
+  created_at: 2021-12-01T12:46:09.01245Z
+  idempotency_key_id: {{$.KeyId}}
+  origin_lat: 0.0
+  origin_lon: 0.0
+  target_lat: 0.0
+  target_lon: 0.0
+  stripe_charge_id: zaZPe9XIf8Pq5NK
+  user_id: {{$.UserId}}

@@ -1,0 +1,3 @@
+- id: {{$.UserId}}
+  email: {{$.UserEmail}}
+  stripe_customer_id: zaZPe9XIf8Pq5NK
