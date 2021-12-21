@@ -7,14 +7,10 @@ help: ## Show Help
 deps: ## Install dependencies
 	go mod tidy
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-	go install github.com/kyleconroy/sqlc/cmd/sqlc@latest
 	go install github.com/segmentio/golines@latest
 
 migrate: ## Run database migrations
 	migrate -path db/migrations -database ${DSN} up
-
-sqlc: ## Generate sqlc files
-	sqlc generate
 
 integration:
 	go test -v -tags=integration ./...
