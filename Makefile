@@ -8,9 +8,23 @@ deps: ## Install dependencies
 	go mod tidy
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 	go install github.com/segmentio/golines@latest
+	go install github.com/vektra/mockery/cmd/mockery
 
 migrate: ## Run database migrations
 	migrate -path db/migrations -database ${DSN} up
 
+lint: ## Run linter
+	golangci-lint  run
+
+format: ## Format source code lines
+	golines . -m 120 -w --ignore-generated
+
+mock: ## Generate mocks for interfaces
+	mockery -name Datastore
+	mockery -name RideUseCase
+
 integration:
 	go test -v -tags=integration ./...
+
+unit:
+	go test -v -tags=unit ./...
