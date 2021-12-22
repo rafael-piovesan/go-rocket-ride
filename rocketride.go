@@ -26,5 +26,5 @@ type Datastore interface {
 }
 
 type RideUseCase interface {
-	Create(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error
+	Create(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) (*entity.IdempotencyKey, error)
 }
