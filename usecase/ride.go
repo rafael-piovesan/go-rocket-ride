@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"reflect"
@@ -78,7 +77,7 @@ func (r *rideUseCase) Create(
 			return key, nil
 
 		default:
-			return nil, rocketride.ErrIdemKeyUnknownRecoveryPoint
+			return nil, entity.ErrIdemKeyUnknownRecoveryPoint
 		}
 	}
 }
@@ -101,7 +100,7 @@ func (r *rideUseCase) getIdempotencyKey(
 	err = r.store.Atomic(ctx, func(ds rocketride.Datastore) error {
 		key, err = ds.GetIdempotencyKey(ctx, ik.IdempotencyKey, ik.UserID)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
+			if errors.Is(err, entity.ErrNotFound) {
 				now := time.Now().UTC()
 				ik.LastRunAt = now
 				ik.LockedAt = &now
@@ -114,13 +113,13 @@ func (r *rideUseCase) getIdempotencyKey(
 		// Programs sending multiple requests with different parameters but the
 		// same idempotency key is a bug.
 		if !reflect.DeepEqual(ik.RequestParams, key.RequestParams) {
-			return rocketride.ErrIdemKeyParamsMismatch
+			return entity.ErrIdemKeyParamsMismatch
 		}
 
 		// Only acquire a lock if the key is unlocked or its lock has expired
 		// because it was long enough ago.
 		if key.LockedAt != nil && key.LockedAt.After(time.Now().UTC().Add(-1*ikTimeout)) {
-			return rocketride.ErrIdemKeyRequestInProgress
+			return entity.ErrIdemKeyRequestInProgress
 		}
 
 		// Lock the key and update latest run unless the request is already

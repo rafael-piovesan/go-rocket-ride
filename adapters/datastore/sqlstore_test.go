@@ -85,7 +85,7 @@ func TestSQLStore(t *testing.T) {
 
 	t.Run("Rollback on error", func(t *testing.T) {
 		_, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
-		require.ErrorIs(t, err, sql.ErrNoRows)
+		require.ErrorIs(t, err, entity.ErrNotFound)
 
 		err = store.Atomic(ctx, func(ds rocketride.Datastore) error {
 			_, err := ds.CreateRide(ctx, ride)
@@ -99,13 +99,13 @@ func TestSQLStore(t *testing.T) {
 
 		if assert.EqualError(t, err, "error rollback") {
 			_, err = store.GetRideByIdempotencyKeyID(ctx, keyID)
-			assert.ErrorIs(t, err, sql.ErrNoRows)
+			assert.ErrorIs(t, err, entity.ErrNotFound)
 		}
 	})
 
 	t.Run("Rollback on panic", func(t *testing.T) {
 		_, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
-		require.ErrorIs(t, err, sql.ErrNoRows)
+		require.ErrorIs(t, err, entity.ErrNotFound)
 
 		err = store.Atomic(ctx, func(ds rocketride.Datastore) error {
 			_, err := ds.CreateRide(ctx, ride)
@@ -119,7 +119,7 @@ func TestSQLStore(t *testing.T) {
 
 		if assert.EqualError(t, err, "panic err: panic rollback") {
 			_, err = store.GetRideByIdempotencyKeyID(ctx, keyID)
-			assert.ErrorIs(t, err, sql.ErrNoRows)
+			assert.ErrorIs(t, err, entity.ErrNotFound)
 		}
 	})
 
@@ -127,7 +127,7 @@ func TestSQLStore(t *testing.T) {
 		cancelCtx, cancel := context.WithCancel(ctx)
 
 		_, err := store.GetRideByIdempotencyKeyID(cancelCtx, keyID)
-		require.ErrorIs(t, err, sql.ErrNoRows)
+		require.ErrorIs(t, err, entity.ErrNotFound)
 
 		err = store.Atomic(ctx, func(ds rocketride.Datastore) error {
 			_, err := ds.CreateRide(cancelCtx, ride)
@@ -142,13 +142,13 @@ func TestSQLStore(t *testing.T) {
 
 		if assert.EqualError(t, err, "context canceled") {
 			_, err = store.GetRideByIdempotencyKeyID(ctx, keyID)
-			assert.ErrorIs(t, err, sql.ErrNoRows)
+			assert.ErrorIs(t, err, entity.ErrNotFound)
 		}
 	})
 
 	t.Run("Commit on success", func(t *testing.T) {
 		_, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
-		require.ErrorIs(t, err, sql.ErrNoRows)
+		require.ErrorIs(t, err, entity.ErrNotFound)
 
 		err = store.Atomic(ctx, func(ds rocketride.Datastore) error {
 			_, err := ds.CreateRide(ctx, ride)

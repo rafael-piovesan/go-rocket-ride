@@ -5,7 +5,6 @@ package usecase
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -75,7 +74,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 
 		mockDS.On("GetIdempotencyKey", ctx, key, userID).
 			Once().
-			Return(nil, sql.ErrNoRows)
+			Return(nil, entity.ErrNotFound)
 
 		mockDS.On("CreateIdempotencyKey", ctx, ik).
 			Once().
@@ -98,7 +97,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 
 		mockDS.On("GetIdempotencyKey", ctx, key, userID).
 			Once().
-			Return(nil, sql.ErrNoRows)
+			Return(nil, entity.ErrNotFound)
 
 		mockDS.On("CreateIdempotencyKey", ctx, ik).
 			Once().
@@ -138,7 +137,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 
 		_, err := uc.getIdempotencyKey(ctx, ik)
 
-		assert.Equal(t, rocketride.ErrIdemKeyParamsMismatch, err)
+		assert.Equal(t, entity.ErrIdemKeyParamsMismatch, err)
 		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
 	})
 
@@ -165,7 +164,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 
 		_, err := uc.getIdempotencyKey(ctx, ik)
 
-		assert.Equal(t, rocketride.ErrIdemKeyRequestInProgress, err)
+		assert.Equal(t, entity.ErrIdemKeyRequestInProgress, err)
 		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
 	})
 
@@ -880,7 +879,7 @@ func TestCreate(t *testing.T) {
 
 		_, err := uc.Create(ctx, ik, rd)
 
-		assert.Equal(t, rocketride.ErrIdemKeyUnknownRecoveryPoint, err)
+		assert.Equal(t, entity.ErrIdemKeyUnknownRecoveryPoint, err)
 		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
 		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
 	})

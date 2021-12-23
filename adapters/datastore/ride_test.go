@@ -68,7 +68,7 @@ func TestRide(t *testing.T) {
 
 	t.Run("Ride not found", func(t *testing.T) {
 		_, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
-		assert.ErrorIs(t, err, sql.ErrNoRows)
+		assert.ErrorIs(t, err, entity.ErrNotFound)
 	})
 
 	t.Run("Create Ride", func(t *testing.T) {

@@ -66,7 +66,7 @@ func TestIdempotencyKey(t *testing.T) {
 
 	t.Run("Idempotency Key not found", func(t *testing.T) {
 		_, err := store.GetIdempotencyKey(ctx, idemKey, userID)
-		assert.ErrorIs(t, err, sql.ErrNoRows)
+		assert.ErrorIs(t, err, entity.ErrNotFound)
 	})
 
 	t.Run("Create Idempotency Key", func(t *testing.T) {

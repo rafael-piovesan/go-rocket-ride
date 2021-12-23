@@ -2,6 +2,8 @@ package datastore
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/rafael-piovesan/go-rocket-ride/entity"
 )
@@ -25,6 +27,10 @@ func (s *sqlStore) GetIdempotencyKey(ctx context.Context, key string, userID int
 		Where("idempotency_key = ? AND user_id = ?", key, userID).
 		Limit(1).
 		Scan(ctx)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return &ik, entity.ErrNotFound
+	}
 
 	return &ik, err
 }

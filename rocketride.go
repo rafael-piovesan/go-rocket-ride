@@ -2,15 +2,8 @@ package rocketride
 
 import (
 	"context"
-	"errors"
 
 	"github.com/rafael-piovesan/go-rocket-ride/entity"
-)
-
-var (
-	ErrIdemKeyParamsMismatch       = errors.New("params mismatch")
-	ErrIdemKeyRequestInProgress    = errors.New("request in progress")
-	ErrIdemKeyUnknownRecoveryPoint = errors.New("unknown recovery point")
 )
 
 type Datastore interface {
