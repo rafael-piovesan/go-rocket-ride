@@ -13,6 +13,9 @@ deps: ## Install dependencies
 migrate: ## Run database migrations
 	migrate -path db/migrations -database ${DSN} up
 
+fixtures: ## Load database fixtures for testing locally
+	testfixtures -d postgres -c ${DSN} -D db/fixtures/local --dangerous-no-test-database-check
+
 lint: ## Run linter
 	golangci-lint  run
 
@@ -23,8 +26,11 @@ mock: ## Generate mocks for interfaces
 	mockery -name Datastore
 	mockery -name RideUseCase
 
-integration:
+integration: ## Run integration tests
 	go test -v -tags=integration ./...
 
-unit:
+unit: ## Run unit tests
 	go test -v -tags=unit ./...
+
+server: ## Run API server locally
+	go run cmd/api/main.go
