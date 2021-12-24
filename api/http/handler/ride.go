@@ -29,19 +29,19 @@ func newCreateRequest() createRequest {
 	}
 }
 
-type RideHanlder struct {
+type RideHandler struct {
 	*Handler
 	uc rocketride.RideUseCase
 }
 
-func NewRideHandler(uc rocketride.RideUseCase) *RideHanlder {
-	return &RideHanlder{
+func NewRideHandler(uc rocketride.RideUseCase) *RideHandler {
+	return &RideHandler{
 		Handler: New(),
 		uc:      uc,
 	}
 }
 
-func (r *RideHanlder) Create(c echo.Context) error {
+func (r *RideHandler) Create(c echo.Context) error {
 	userID, err := r.GetUserID(c)
 	if err != nil {
 		return err
