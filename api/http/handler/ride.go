@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"net/http"
 	"time"
 
@@ -17,6 +18,15 @@ type createRequest struct {
 	OrigLon float64 `json:"origin_lon" validate:"min=-180,max=180"`
 	TgtLat  float64 `json:"target_lat" validate:"min=-90,max=90"`
 	TgtLon  float64 `json:"target_lon" validate:"min=-180,max=180"`
+}
+
+func newCreateRequest() createRequest {
+	return createRequest{
+		OrigLat: math.Inf(-1),
+		OrigLon: math.Inf(-1),
+		TgtLat:  math.Inf(-1),
+		TgtLon:  math.Inf(-1),
+	}
 }
 
 type RideHanlder struct {
@@ -37,7 +47,7 @@ func (r *RideHanlder) Create(c echo.Context) error {
 		return err
 	}
 
-	cr := createRequest{}
+	cr := newCreateRequest()
 	if err := r.BindAndValidate(c, &cr); err != nil {
 		return err
 	}
