@@ -5,15 +5,11 @@ services:
     image: postgres:14.1
     container_name: rocketride-postgres
     env_file:
-      - .env
+      - app.env
     networks:
       - rocket-rides
     ports:
       - "5432:5432"
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASS}      
 
 networks:
   rocket-rides:
