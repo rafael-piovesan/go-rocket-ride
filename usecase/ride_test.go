@@ -621,6 +621,7 @@ func TestSendReceipt(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, idempotency.RecoveryPointFinished, ik.RecoveryPoint)
+		assert.Nil(t, ik.LockedAt)
 		assert.Equal(t, idempotency.ResponseCodeOK, *ik.ResponseCode)
 		assert.Equal(t, idempotency.ResponseBody{Message: "OK"}, *ik.ResponseBody)
 		mockDS.AssertCalled(t, "CreateStagedJob", ctx, mock.AnythingOfType("*entity.StagedJob"))

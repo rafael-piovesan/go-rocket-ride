@@ -239,6 +239,7 @@ func (r *rideUseCase) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey
 		resCode := idempotency.ResponseCodeOK
 		resBody := idempotency.ResponseBody{Message: "OK"}
 
+		ik.LockedAt = nil
 		ik.ResponseCode = &resCode
 		ik.ResponseBody = &resBody
 		ik.RecoveryPoint = idempotency.RecoveryPointFinished
