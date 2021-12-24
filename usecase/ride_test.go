@@ -5,6 +5,7 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/rafael-piovesan/go-rocket-ride/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetIdempotencyKey(t *testing.T) {
@@ -42,6 +44,15 @@ func TestGetIdempotencyKey(t *testing.T) {
 		})
 
 	uc := rideUseCase{cfg: mockCfg, store: mockDS}
+
+	gofakeit.Seed(time.Now().UnixNano())
+	jsonRide, err := json.Marshal(entity.Ride{
+		OriginLat: gofakeit.Float64(),
+		OriginLon: gofakeit.Float64(),
+		TargetLat: gofakeit.Float64(),
+		TargetLon: gofakeit.Float64(),
+	})
+	require.NoError(t, err)
 
 	t.Run("Error on GetIdempotencyKey", func(t *testing.T) {
 		key := gofakeit.UUID()
@@ -118,25 +129,34 @@ func TestGetIdempotencyKey(t *testing.T) {
 	})
 
 	t.Run("Request parameters mismatch", func(t *testing.T) {
+		gofakeit.Seed(time.Now().UnixNano())
+		jsonRide2, err := json.Marshal(entity.Ride{
+			OriginLat: gofakeit.Float64(),
+			OriginLon: gofakeit.Float64(),
+			TargetLat: gofakeit.Float64(),
+			TargetLon: gofakeit.Float64(),
+		})
+		require.NoError(t, err)
+
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
 		ik := &entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
-			RequestParams:  []byte("bar"),
+			RequestParams:  jsonRide,
 		}
 
 		retIK := &entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
-			RequestParams:  []byte("foo"),
+			RequestParams:  jsonRide2,
 		}
 
 		mockDS.On("GetIdempotencyKey", ctx, key, userID).
 			Once().
 			Return(retIK, nil)
 
-		_, err := uc.getIdempotencyKey(ctx, ik)
+		_, err = uc.getIdempotencyKey(ctx, ik)
 
 		assert.Equal(t, entity.ErrIdemKeyParamsMismatch, err)
 		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
@@ -148,14 +168,14 @@ func TestGetIdempotencyKey(t *testing.T) {
 		ik := &entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
-			RequestParams:  []byte("foo"),
+			RequestParams:  jsonRide,
 		}
 
 		now := time.Now().UTC()
 		retIK := &entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
-			RequestParams:  []byte("foo"),
+			RequestParams:  jsonRide,
 			LockedAt:       &now,
 		}
 
@@ -184,7 +204,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 		ik := &entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
-			RequestParams:  []byte("foo"),
+			RequestParams:  jsonRide,
 			RecoveryPoint:  rps[ix],
 		}
 
@@ -220,7 +240,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 		ik := &entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
-			RequestParams:  []byte("foo"),
+			RequestParams:  jsonRide,
 			RecoveryPoint:  rps[ix],
 		}
 
@@ -246,7 +266,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 		ik := &entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
-			RequestParams:  []byte("foo"),
+			RequestParams:  jsonRide,
 			RecoveryPoint:  idempotency.RecoveryPointFinished,
 		}
 
@@ -672,12 +692,21 @@ func TestCreate(t *testing.T) {
 
 	uc := NewRideUseCase(mockCfg, mockDS)
 
+	jsonRide, err := json.Marshal(entity.Ride{
+		OriginLat: gofakeit.Float64(),
+		OriginLon: gofakeit.Float64(),
+		TargetLat: gofakeit.Float64(),
+		TargetLon: gofakeit.Float64(),
+	})
+	require.NoError(t, err)
+
 	t.Run("Error on createRide", func(t *testing.T) {
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
 		ik := &entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
+			RequestParams:  jsonRide,
 			RecoveryPoint:  idempotency.RecoveryPointStarted,
 		}
 
@@ -722,6 +751,7 @@ func TestCreate(t *testing.T) {
 		ik := &entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
+			RequestParams:  jsonRide,
 			RecoveryPoint:  idempotency.RecoveryPointCreated,
 		}
 
@@ -767,6 +797,7 @@ func TestCreate(t *testing.T) {
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         userID,
+			RequestParams:  jsonRide,
 			RecoveryPoint:  idempotency.RecoveryPointCharged,
 		}
 
@@ -810,6 +841,7 @@ func TestCreate(t *testing.T) {
 		ik := &entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
+			RequestParams:  jsonRide,
 			RecoveryPoint:  idempotency.RecoveryPointFinished,
 		}
 
@@ -843,6 +875,7 @@ func TestCreate(t *testing.T) {
 		ik := &entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
+			RequestParams:  jsonRide,
 			RecoveryPoint:  "unkown",
 		}
 
@@ -881,6 +914,7 @@ func TestCreate(t *testing.T) {
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         userID,
+			RequestParams:  jsonRide,
 			RecoveryPoint:  idempotency.RecoveryPointStarted,
 		}
 

@@ -106,9 +106,20 @@ func (r *rideUseCase) getIdempotencyKey(
 			return err
 		}
 
+		// Unmarshal the JSON returned from datastore, so we're able to
+		// properly compare it against the request.
+		rd1, rd2 := entity.Ride{}, entity.Ride{}
+		if err := json.Unmarshal(ik.RequestParams, &rd1); err != nil {
+			return entity.ErrIdemKeyParamsMismatch
+		}
+
+		if err := json.Unmarshal(key.RequestParams, &rd2); err != nil {
+			return entity.ErrIdemKeyParamsMismatch
+		}
+
 		// Programs sending multiple requests with different parameters but the
 		// same idempotency key is a bug.
-		if !reflect.DeepEqual(ik.RequestParams, key.RequestParams) {
+		if !reflect.DeepEqual(rd1, rd2) {
 			return entity.ErrIdemKeyParamsMismatch
 		}
 
