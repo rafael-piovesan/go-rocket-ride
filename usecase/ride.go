@@ -15,18 +15,14 @@ import (
 	"github.com/rafael-piovesan/go-rocket-ride/entity/stagedjob"
 )
 
-const (
-	// FIXME: read value from config var injected as dependency.
-	// idempotency key timeout.
-	ikTimeout = 5 * time.Second
-)
-
 type rideUseCase struct {
+	cfg   rocketride.Config
 	store rocketride.Datastore
 }
 
-func NewRideUseCase(ds rocketride.Datastore) rocketride.RideUseCase {
+func NewRideUseCase(cfg rocketride.Config, ds rocketride.Datastore) rocketride.RideUseCase {
 	return &rideUseCase{
+		cfg:   cfg,
 		store: ds,
 	}
 }
@@ -118,7 +114,8 @@ func (r *rideUseCase) getIdempotencyKey(
 
 		// Only acquire a lock if the key is unlocked or its lock has expired
 		// because it was long enough ago.
-		if key.LockedAt != nil && key.LockedAt.After(time.Now().UTC().Add(-1*ikTimeout)) {
+		timeout := time.Duration(r.cfg.IdemKeyTimeout) * time.Second
+		if key.LockedAt != nil && key.LockedAt.After(time.Now().UTC().Add(-1*timeout)) {
 			return entity.ErrIdemKeyRequestInProgress
 		}
 

@@ -22,6 +22,7 @@ import (
 func TestGetIdempotencyKey(t *testing.T) {
 	ctx := context.Background()
 
+	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
 	mockDS := &mocks.Datastore{}
 
 	var mockAtomic *mock.Call
@@ -40,7 +41,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 			mockAtomic.Return(fn(mockDS))
 		})
 
-	uc := rideUseCase{store: mockDS}
+	uc := rideUseCase{cfg: mockCfg, store: mockDS}
 
 	t.Run("Error on GetIdempotencyKey", func(t *testing.T) {
 		key := gofakeit.UUID()
@@ -265,6 +266,7 @@ func TestCreateRide(t *testing.T) {
 	oip := &originip.OriginIP{IP: gofakeit.IPv4Address()}
 	ctx := originip.NewContext(context.Background(), oip)
 
+	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
 	mockDS := &mocks.Datastore{}
 
 	var mockAtomic *mock.Call
@@ -274,16 +276,10 @@ func TestCreateRide(t *testing.T) {
 			if !ok {
 				panic("argument mismatch")
 			}
-
-			// Call the actual func argument 'fn' passed in to
-			// 'Atomic(context.Context, func(rocketride.Datastore) error) error'
-			// as expected from its second parameter and, while doing so, inject the
-			// mocked Datastore instance 'mockDS' so we're able to test the other calls
-			// made to it inside the 'Atomic' block.
 			mockAtomic.Return(fn(mockDS))
 		})
 
-	uc := rideUseCase{store: mockDS}
+	uc := rideUseCase{cfg: mockCfg, store: mockDS}
 
 	t.Run("Error on CreateRide", func(t *testing.T) {
 		key := gofakeit.UUID()
@@ -410,6 +406,7 @@ func TestCreateRide(t *testing.T) {
 func TestCreateCharge(t *testing.T) {
 	ctx := context.Background()
 
+	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
 	mockDS := &mocks.Datastore{}
 
 	var mockAtomic *mock.Call
@@ -419,16 +416,10 @@ func TestCreateCharge(t *testing.T) {
 			if !ok {
 				panic("argument mismatch")
 			}
-
-			// Call the actual func argument 'fn' passed in to
-			// 'Atomic(context.Context, func(rocketride.Datastore) error) error'
-			// as expected from its second parameter and, while doing so, inject the
-			// mocked Datastore instance 'mockDS' so we're able to test the other calls
-			// made to it inside the 'Atomic' block.
 			mockAtomic.Return(fn(mockDS))
 		})
 
-	uc := rideUseCase{store: mockDS}
+	uc := rideUseCase{cfg: mockCfg, store: mockDS}
 
 	t.Run("Error on GetRideByIdempotencyKeyID", func(t *testing.T) {
 		key := gofakeit.UUID()
@@ -554,6 +545,7 @@ func TestCreateCharge(t *testing.T) {
 func TestSendReceipt(t *testing.T) {
 	ctx := context.Background()
 
+	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
 	mockDS := &mocks.Datastore{}
 
 	var mockAtomic *mock.Call
@@ -563,16 +555,10 @@ func TestSendReceipt(t *testing.T) {
 			if !ok {
 				panic("argument mismatch")
 			}
-
-			// Call the actual func argument 'fn' passed in to
-			// 'Atomic(context.Context, func(rocketride.Datastore) error) error'
-			// as expected from its second parameter and, while doing so, inject the
-			// mocked Datastore instance 'mockDS' so we're able to test the other calls
-			// made to it inside the 'Atomic' block.
 			mockAtomic.Return(fn(mockDS))
 		})
 
-	uc := rideUseCase{store: mockDS}
+	uc := rideUseCase{cfg: mockCfg, store: mockDS}
 
 	t.Run("Error on CreateStagedJob", func(t *testing.T) {
 		userID := int64(gofakeit.Number(1, 1000))
@@ -645,9 +631,10 @@ func TestSendReceipt(t *testing.T) {
 func TestUnlockIdempotencyKey(t *testing.T) {
 	ctx := context.Background()
 
+	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
 	mockDS := &mocks.Datastore{}
 
-	uc := rideUseCase{store: mockDS}
+	uc := rideUseCase{cfg: mockCfg, store: mockDS}
 
 	t.Run("Error on UpdateIdempotencyKey", func(t *testing.T) {
 		ik := &entity.IdempotencyKey{}
@@ -679,9 +666,10 @@ func TestUnlockIdempotencyKey(t *testing.T) {
 func TestCreate(t *testing.T) {
 	ctx := context.Background()
 
+	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
 	mockDS := &mocks.Datastore{}
 
-	uc := NewRideUseCase(mockDS)
+	uc := NewRideUseCase(mockCfg, mockDS)
 
 	t.Run("Error on createRide", func(t *testing.T) {
 		key := gofakeit.UUID()
