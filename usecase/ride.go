@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/google/uuid"
 	rocketride "github.com/rafael-piovesan/go-rocket-ride"
 	"github.com/rafael-piovesan/go-rocket-ride/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/entity/audit"
@@ -208,7 +209,7 @@ func (r *rideUseCase) createCharge(ctx context.Context, ik *entity.IdempotencyKe
 
 		// TODO: make stripe call
 
-		stripeID := "stripe-id"
+		stripeID := uuid.New().String()
 		ride.StripeChargeID = &stripeID
 		_, err = ds.UpdateRide(ctx, ride)
 		if err != nil {
