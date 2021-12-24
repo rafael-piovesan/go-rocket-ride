@@ -4,6 +4,8 @@ idempotency-key: key123
 http-authorization: local.user@email.com
 
 {
-    "name": "sample",
-    "time": "Wed, 21 Oct 2015 18:27:50 GMT"
+    "origin_lat": 0.0,
+    "origin_lon": 0.0,
+    "target_lat": 0.0,
+    "target_lon": 0.0
 }
