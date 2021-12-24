@@ -63,10 +63,10 @@ func TestSQLStore(t *testing.T) {
 	// test entities
 	ride := &entity.Ride{
 		IdempotencyKeyID: &keyID,
-		OriginLat:        "0.0000000000",
-		OriginLon:        "0.0000000000",
-		TargetLat:        "0.0000000000",
-		TargetLon:        "0.0000000000",
+		OriginLat:        0.0,
+		OriginLon:        0.0,
+		TargetLat:        0.0,
+		TargetLon:        0.0,
 		UserID:           userID,
 	}
 
