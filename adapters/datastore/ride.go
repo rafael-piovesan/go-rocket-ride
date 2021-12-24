@@ -18,18 +18,18 @@ func (s *sqlStore) CreateRide(ctx context.Context, rd *entity.Ride) (*entity.Rid
 }
 
 func (s *sqlStore) GetRideByIdempotencyKeyID(ctx context.Context, keyID int64) (*entity.Ride, error) {
-	r := entity.Ride{}
+	r := &entity.Ride{}
 	err := s.db.NewSelect().
-		Model(&r).
+		Model(r).
 		Where("idempotency_key_id = ?", keyID).
 		Limit(1).
 		Scan(ctx)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return &r, entity.ErrNotFound
+		return r, entity.ErrNotFound
 	}
 
-	return &r, err
+	return r, err
 }
 
 func (s *sqlStore) UpdateRide(ctx context.Context, rd *entity.Ride) (*entity.Ride, error) {

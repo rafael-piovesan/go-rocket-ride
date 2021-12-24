@@ -21,18 +21,18 @@ func (s *sqlStore) CreateIdempotencyKey(
 }
 
 func (s *sqlStore) GetIdempotencyKey(ctx context.Context, key string, userID int64) (*entity.IdempotencyKey, error) {
-	ik := entity.IdempotencyKey{}
+	ik := &entity.IdempotencyKey{}
 	err := s.db.NewSelect().
-		Model(&ik).
+		Model(ik).
 		Where("idempotency_key = ? AND user_id = ?", key, userID).
 		Limit(1).
 		Scan(ctx)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return &ik, entity.ErrNotFound
+		return ik, entity.ErrNotFound
 	}
 
-	return &ik, err
+	return ik, err
 }
 
 func (s *sqlStore) UpdateIdempotencyKey(
