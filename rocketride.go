@@ -14,6 +14,7 @@ type Datastore interface {
 	CreateStagedJob(ctx context.Context, sj *entity.StagedJob) (*entity.StagedJob, error)
 	GetIdempotencyKey(ctx context.Context, key string, userID int64) (*entity.IdempotencyKey, error)
 	GetRideByIdempotencyKeyID(ctx context.Context, keyID int64) (*entity.Ride, error)
+	GetUserByEmail(ctx context.Context, email string) (*entity.User, error)
 	UpdateIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) (*entity.IdempotencyKey, error)
 	UpdateRide(ctx context.Context, rd *entity.Ride) (*entity.Ride, error)
 }
