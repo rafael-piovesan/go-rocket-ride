@@ -69,8 +69,8 @@ Use the provided `Makefile` to help you with dev & testing tasks:
 ```sh
 help         # Show help
 deps         # Install dependencies
-migrate      # Run db migrations (expects $DSN env var, so, run it with: 'DSN=<postgres dsn> make fixtures')
-fixtures     # Load db fixtures (expects $DSN env var, so, run it with: 'DSN=<postgres dsn> make fixtures')
+migrate      # Run db migrations (expects $DSN env var, i.e., 'DSN=<postgres dsn> make migrate')
+fixtures     # Load db fixtures (expects $DSN env var, i.e., 'DSN=<postgres dsn> make fixtures')
 lint         # Run linter
 format       # Format source code
 mock         # Generate interfaces mocks
