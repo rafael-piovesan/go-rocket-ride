@@ -4,7 +4,7 @@ import "time"
 
 type Ride struct {
 	ID               int64
-	CreatedAt        time.Time
+	CreatedAt        time.Time `bun:",nullzero,notnull,default:current_timestamp"`
 	IdempotencyKeyID *int64
 	OriginLat        float64
 	OriginLon        float64

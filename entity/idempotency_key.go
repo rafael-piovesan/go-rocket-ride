@@ -9,7 +9,7 @@ import (
 
 type IdempotencyKey struct {
 	ID             int64
-	CreatedAt      time.Time
+	CreatedAt      time.Time `bun:",nullzero,notnull,default:current_timestamp"`
 	IdempotencyKey string
 	LastRunAt      time.Time
 	LockedAt       *time.Time
