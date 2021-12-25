@@ -215,9 +215,10 @@ func TestCreate(t *testing.T) {
 
 			err := handler.Create(c)
 
-			if assert.NoError(t, err, tc.desc) {
-				assert.Equal(t, tc.retCode, rec.Code, tc.desc)
-				assert.Equal(t, tc.retMsg, rec.Body.String(), tc.desc)
+			if assert.Error(t, err) && assert.IsType(t, (&echo.HTTPError{}), err) {
+				he := (err).(*echo.HTTPError)
+				assert.Equal(t, tc.retCode, he.Code, tc.desc)
+				assert.Equal(t, tc.retMsg, he.Message, tc.desc)
 			}
 		}
 	})

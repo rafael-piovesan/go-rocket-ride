@@ -5,7 +5,6 @@ import (
 	"errors"
 	"math"
 	"net/http"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	rocketride "github.com/rafael-piovesan/go-rocket-ride"
@@ -62,7 +61,6 @@ func (r *RideHandler) Create(c echo.Context) error {
 	rp, _ := json.Marshal(rd)
 
 	ik := &entity.IdempotencyKey{
-		CreatedAt:      time.Now().UTC(),
 		IdempotencyKey: cr.IdemKey,
 		UserID:         userID,
 		RequestMethod:  c.Request().Method,
@@ -73,17 +71,17 @@ func (r *RideHandler) Create(c echo.Context) error {
 	ik, err = r.uc.Create(c.Request().Context(), ik, rd)
 
 	if errors.Is(err, entity.ErrIdemKeyParamsMismatch) || errors.Is(err, entity.ErrIdemKeyRequestInProgress) {
-		return c.String(http.StatusConflict, err.Error())
+		return echo.NewHTTPError(http.StatusConflict, err.Error())
 	}
 
 	if err != nil || ik.ResponseCode == nil || ik.ResponseBody == nil {
-		return c.String(http.StatusInternalServerError, "internal error")
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
 	}
 
 	rCode := int(*ik.ResponseCode)
 	rBody, err := json.Marshal(*ik.ResponseBody)
 	if err != nil {
-		return c.String(http.StatusInternalServerError, "internal error")
+		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
 	}
 
 	return c.JSONBlob(rCode, rBody)
