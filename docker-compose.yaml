@@ -10,6 +10,15 @@ services:
       - rocket-rides
     ports:
       - "5432:5432"
+  
+  stripe-mock:
+    image: stripemock/stripe-mock:latest
+    container_name: rocketride-stripe
+    networks:
+      - rocket-rides
+    ports:
+      - "12111:12111"
+      - "12112:12112"
 
 networks:
   rocket-rides:
