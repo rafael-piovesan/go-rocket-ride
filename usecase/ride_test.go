@@ -444,6 +444,7 @@ func TestCreateRide(t *testing.T) {
 }
 
 func TestCreateCharge(t *testing.T) {
+	defer gock.Off()
 	ctx := context.Background()
 
 	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
@@ -819,6 +820,7 @@ func TestUnlockIdempotencyKey(t *testing.T) {
 }
 
 func TestCreate(t *testing.T) {
+	defer gock.Off()
 	ctx := context.Background()
 
 	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
