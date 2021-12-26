@@ -23,6 +23,7 @@ Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#roc
 ├── mocks             # interface mocks for unit testing
 ├── pkg               # 3rd party lib wrappers
 │   ├── migrate       # help with db migrations during integration tests
+│   ├── stripemock    # set Stripe's API SDK Backend to use stripe-mock
 │   ├── testcontainer # create db containers used in integration tests
 │   ├── testfixtures  # load db fixtures needed for integration tests
 │   └── tools         # keeps track of dev deps
