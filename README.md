@@ -36,6 +36,7 @@ Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#roc
 Requirements:
 1. Make a copy of the `app.env.sample` file and name it `app.env`, then use it to set the env vars as needed
 1. A working instance of Postgres (for convenience, there's a `docker-compose.yaml` included to help with this step)
+1. Stripe's [stripe-mock](https://github.com/stripe/stripe-mock) (also provided with the `docker-compose.yaml`)
 1. Docker is also needed for running the integration tests, since they rely on [testcontainers](https://github.com/testcontainers/testcontainers-go)
 1. This project makes use of `testfixtures` CLI to facilitate loading db fixtures, please take a look at how to install it [here](https://github.com/go-testfixtures/testfixtures#cli)
 1. Finally, run the following commands:
@@ -49,6 +50,9 @@ DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable make mig
 
 # load db fixtures, remember to export the $DSN env var before running it
 DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable make fixtures
+
+# start the dependencies (postgres and stripe-mock)
+docker-compose up -d
 
 # start the API server
 make server
