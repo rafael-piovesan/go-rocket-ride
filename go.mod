@@ -7,6 +7,7 @@ require (
 	github.com/go-testfixtures/testfixtures/v3 v3.6.1
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/golangci/golangci-lint v1.43.0
+	github.com/labstack/gommon v0.3.0
 	github.com/segmentio/golines v0.7.0
 	github.com/spf13/viper v1.9.0
 	github.com/stretchr/testify v1.7.0
@@ -88,7 +89,6 @@ require (
 	github.com/kulti/thelper v0.4.0 // indirect
 	github.com/kunwardeep/paralleltest v1.0.3 // indirect
 	github.com/kyoh86/exportloopref v0.1.8 // indirect
-	github.com/labstack/gommon v0.3.0 // indirect
 	github.com/ldez/gomoddirectives v0.2.2 // indirect
 	github.com/ldez/tagliatelle v0.2.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
@@ -184,7 +184,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
@@ -199,6 +199,7 @@ require (
 	github.com/opencontainers/runc v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
+	github.com/stripe/stripe-go/v72 v72.81.0
 	github.com/tabbed/pqtype v0.1.1
 	github.com/uptrace/bun v1.0.20
 	github.com/uptrace/bun/dialect/pgdialect v1.0.20

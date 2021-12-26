@@ -10,6 +10,7 @@ type Config struct {
 	IdemKeyTimeout int    `mapstructure:"IDEM_KEY_TIMEOUT"`
 	DBSource       string `mapstructure:"DB_SOURCE"`
 	ServerAddress  string `mapstructure:"SERVER_ADDRESS"`
+	StripeKey      string `mapstructure:"STRIPE_KEY"`
 }
 
 // LoadConfig reads configuration from file or environment variables.

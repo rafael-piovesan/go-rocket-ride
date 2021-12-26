@@ -4,16 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/labstack/gommon/log"
+	"github.com/stripe/stripe-go/v72"
+	"github.com/stripe/stripe-go/v72/charge"
+
 	rocketride "github.com/rafael-piovesan/go-rocket-ride"
 	"github.com/rafael-piovesan/go-rocket-ride/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/entity/audit"
 	"github.com/rafael-piovesan/go-rocket-ride/entity/idempotency"
 	"github.com/rafael-piovesan/go-rocket-ride/entity/originip"
 	"github.com/rafael-piovesan/go-rocket-ride/entity/stagedjob"
+
+	// for now, we're using 'stripe-mock' instead of the real API.
+	// see: https://github.com/stripe/stripe-mock
+	_ "github.com/stripe/stripe-go/v72/testing"
 )
 
 type rideUseCase struct {
@@ -22,6 +30,9 @@ type rideUseCase struct {
 }
 
 func NewRideUseCase(cfg rocketride.Config, ds rocketride.Datastore) rocketride.RideUseCase {
+	// setup Stripe's key
+	stripe.Key = cfg.StripeKey
+
 	return &rideUseCase{
 		cfg:   cfg,
 		store: ds,
@@ -192,6 +203,15 @@ func (r *rideUseCase) createCharge(ctx context.Context, ik *entity.IdempotencyKe
 	var ride *entity.Ride
 
 	err = r.store.Atomic(ctx, func(ds rocketride.Datastore) error {
+		handleStripeErr := func() {
+			// short-circuit to the final state
+			ik.RecoveryPoint = idempotency.RecoveryPointFinished
+			_, err = ds.UpdateIdempotencyKey(ctx, ik)
+			if err != nil {
+				log.Errorf("error updating idem key after stripe error: %v", err)
+			}
+		}
+
 		// check if 'rd' is 'nil', indicating we're restarting from a Recovery Point
 		if rd == nil {
 			// retrieve a ride record because it's necessary (i.e. we're recovering)
@@ -202,15 +222,40 @@ func (r *rideUseCase) createCharge(ctx context.Context, ik *entity.IdempotencyKe
 		} else {
 			ride = rd
 		}
+
+		// Pass through our own unique ID rather than the value transmitted
+		// to us so that we can guarantee uniqueness to Stripe across all
+		// Rocket Rides accounts.
+		stripeIK := fmt.Sprintf("go-rocket-ride-%v", ik.ID)
+
 		// Rocket Rides is still a new service, so during our prototype phase
 		// we're going to give $20 fixed-cost rides to everyone, regardless of
 		// distance. We'll implement a better algorithm later to better
 		// represent the cost in time and jetfuel on the part of our pilots.
+		params := &stripe.ChargeParams{
+			Params:      stripe.Params{IdempotencyKey: &stripeIK},
+			Amount:      stripe.Int64(2000),
+			Currency:    stripe.String(string(stripe.CurrencyUSD)),
+			Description: stripe.String(fmt.Sprintf("Charge for ride %v", ride.ID)),
+		}
+		c, err := charge.New(params)
 
-		// TODO: make stripe call
+		switch {
+		case errors.Is(err, &stripe.CardError{}):
+			defer handleStripeErr()
+			log.Errorf("stripe card error: %v", err)
+			return entity.ErrPaymentProvider
+		case errors.Is(err, &stripe.APIError{}):
+			defer handleStripeErr()
+			log.Errorf("stripe api error: %v", err)
+			return entity.ErrPaymentProviderGeneric
+		case err != nil:
+			log.Errorf("stripe api request error: %v", err)
+			return err
+		}
 
-		stripeID := uuid.New().String()
-		ride.StripeChargeID = &stripeID
+		ride.StripeChargeID = &c.ID
+		log.Debugf("stripe charge id: %v", c.ID)
 		_, err = ds.UpdateRide(ctx, ride)
 		if err != nil {
 			return err
@@ -264,9 +309,8 @@ func (r *rideUseCase) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey
 func (r *rideUseCase) unlockIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) {
 	ik.LockedAt = nil
 	_, err := r.store.UpdateIdempotencyKey(ctx, ik)
-	if err != nil { // nolint
-		// TODO: We're already inside an error condition, so we should swallow any
-		// additional errors from here and just send them to logs.
+	if err != nil {
+		log.Errorf("unlock idem key error: %v", err)
 	}
 }
 

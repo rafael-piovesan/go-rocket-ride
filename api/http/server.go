@@ -10,6 +10,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/gommon/log"
 	rocketride "github.com/rafael-piovesan/go-rocket-ride"
 	"github.com/rafael-piovesan/go-rocket-ride/api/http/handler"
 	cstmiddleware "github.com/rafael-piovesan/go-rocket-ride/api/http/middleware"
@@ -22,6 +23,8 @@ type Server struct {
 }
 
 func NewServer(cfg rocketride.Config, store rocketride.Datastore) *Server {
+	log.SetLevel(log.DEBUG)
+
 	e := echo.New()
 
 	// Middleware

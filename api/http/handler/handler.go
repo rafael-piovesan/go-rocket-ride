@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -48,4 +49,17 @@ func (h *Handler) GetUserID(c echo.Context) (uid int64, err error) {
 		err = echo.NewHTTPError(http.StatusUnauthorized, entity.ErrPermissionDenied.Error())
 	}
 	return
+}
+
+func (h *Handler) HandleError(err error) error {
+	switch {
+	case errors.Is(err, entity.ErrIdemKeyParamsMismatch) || errors.Is(err, entity.ErrIdemKeyRequestInProgress):
+		return echo.NewHTTPError(http.StatusConflict, err.Error())
+	case errors.Is(err, entity.ErrPaymentProvider):
+		return echo.NewHTTPError(http.StatusPaymentRequired, err.Error())
+	case errors.Is(err, entity.ErrPaymentProviderGeneric):
+		return echo.NewHTTPError(http.StatusServiceUnavailable, err.Error())
+	default:
+		return echo.NewHTTPError(http.StatusInternalServerError, entity.ErrInternalError.Error())
+	}
 }

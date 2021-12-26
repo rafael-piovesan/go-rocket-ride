@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
-	"net/http"
 
 	"github.com/labstack/echo/v4"
 	rocketride "github.com/rafael-piovesan/go-rocket-ride"
@@ -69,20 +68,25 @@ func (r *RideHandler) Create(c echo.Context) error {
 	}
 
 	ik, err = r.uc.Create(c.Request().Context(), ik, rd)
-
-	if errors.Is(err, entity.ErrIdemKeyParamsMismatch) || errors.Is(err, entity.ErrIdemKeyRequestInProgress) {
-		return echo.NewHTTPError(http.StatusConflict, err.Error())
-	}
-
-	if err != nil || ik.ResponseCode == nil || ik.ResponseBody == nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
-	}
-
-	rCode := int(*ik.ResponseCode)
-	rBody, err := json.Marshal(*ik.ResponseBody)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "internal error")
+		return r.HandleError(err)
+	}
+
+	rCode, rBody, err := r.handleResponse(ik)
+	if err != nil {
+		return r.HandleError(err)
 	}
 
 	return c.JSONBlob(rCode, rBody)
+}
+
+func (r *RideHandler) handleResponse(ik *entity.IdempotencyKey) (rCode int, rBody []byte, err error) {
+	if ik.ResponseCode == nil || ik.ResponseBody == nil {
+		err = errors.New("invalid response")
+		return
+	}
+
+	rCode = int(*ik.ResponseCode)
+	rBody, err = json.Marshal(*ik.ResponseBody)
+	return
 }
