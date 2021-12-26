@@ -13,6 +13,7 @@ import (
 	stripe "github.com/stripe/stripe-go/v72"
 	"github.com/stripe/stripe-go/v72/form"
 	"golang.org/x/net/http2"
+	"gopkg.in/h2non/gock.v1"
 )
 
 // This file should contain any testing helpers that should be commonly
@@ -85,14 +86,33 @@ func Init() {
 	}
 
 	stripe.Key = "sk_test_myTestKey"
+	confBackend("https://localhost:"+port, httpClient)
+}
 
+func InitForError() {
+	stripeURL := "http://stripeapi"
+	gock.New(stripeURL).
+		Post("/v1/charges").
+		Reply(402).
+		BodyString(`{
+				"error": {
+					"type":"card_error",
+					"code": "balance_insufficient",
+					"message":"card is suspicious"
+				}
+			}`)
+
+	confBackend(stripeURL, &http.Client{})
+}
+
+func confBackend(addr string, httpClient *http.Client) {
 	// Configure a backend for stripe-mock and set it for both the API and
 	// Uploads (unlike the real Stripe API, stripe-mock supports both these
 	// backends).
 	stripeMockBackend := stripe.GetBackendWithConfig(
 		stripe.APIBackend,
 		&stripe.BackendConfig{
-			URL:           stripe.String("https://localhost:" + port),
+			URL:           stripe.String(addr),
 			HTTPClient:    httpClient,
 			LeveledLogger: stripe.DefaultLeveledLogger,
 		},
