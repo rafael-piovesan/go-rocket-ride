@@ -18,10 +18,7 @@ import (
 	"github.com/rafael-piovesan/go-rocket-ride/entity/idempotency"
 	"github.com/rafael-piovesan/go-rocket-ride/entity/originip"
 	"github.com/rafael-piovesan/go-rocket-ride/entity/stagedjob"
-
-	// for now, we're using 'stripe-mock' instead of the real API.
-	// see: https://github.com/stripe/stripe-mock
-	_ "github.com/stripe/stripe-go/v72/testing"
+	"github.com/rafael-piovesan/go-rocket-ride/pkg/stripemock"
 )
 
 type rideUseCase struct {
@@ -32,6 +29,9 @@ type rideUseCase struct {
 func NewRideUseCase(cfg rocketride.Config, ds rocketride.Datastore) rocketride.RideUseCase {
 	// setup Stripe's key
 	stripe.Key = cfg.StripeKey
+
+	// Replace the original Stripe API Backend with its mock
+	stripemock.Init()
 
 	return &rideUseCase{
 		cfg:   cfg,
@@ -203,7 +203,10 @@ func (r *rideUseCase) createCharge(ctx context.Context, ik *entity.IdempotencyKe
 	var ride *entity.Ride
 
 	err = r.store.Atomic(ctx, func(ds rocketride.Datastore) error {
-		handleStripeErr := func() {
+		handleStripeErr := func(resCode *idempotency.ResponseCode, resBody *idempotency.ResponseBody) {
+			ik.LockedAt = nil
+			ik.ResponseCode = resCode
+			ik.ResponseBody = resBody
 			// short-circuit to the final state
 			ik.RecoveryPoint = idempotency.RecoveryPointFinished
 			_, err = ds.UpdateIdempotencyKey(ctx, ik)
@@ -212,9 +215,8 @@ func (r *rideUseCase) createCharge(ctx context.Context, ik *entity.IdempotencyKe
 			}
 		}
 
-		// check if 'rd' is 'nil', indicating we're restarting from a Recovery Point
+		// check if we're restarting from a Recovery Point and retrieve a ride from db
 		if rd == nil {
-			// retrieve a ride record because it's necessary (i.e. we're recovering)
 			ride, err = ds.GetRideByIdempotencyKeyID(ctx, ik.ID)
 			if err != nil {
 				return err
@@ -233,23 +235,35 @@ func (r *rideUseCase) createCharge(ctx context.Context, ik *entity.IdempotencyKe
 		// distance. We'll implement a better algorithm later to better
 		// represent the cost in time and jetfuel on the part of our pilots.
 		params := &stripe.ChargeParams{
-			Params:      stripe.Params{IdempotencyKey: &stripeIK},
-			Amount:      stripe.Int64(2000),
-			Currency:    stripe.String(string(stripe.CurrencyUSD)),
+			Params:   stripe.Params{IdempotencyKey: &stripeIK},
+			Amount:   stripe.Int64(2000),
+			Currency: stripe.String(string(stripe.CurrencyUSD)),
+			// TODO: include stripe-customer-id
 			Description: stripe.String(fmt.Sprintf("Charge for ride %v", ride.ID)),
 		}
-		c, err := charge.New(params)
 
-		switch {
-		case errors.Is(err, &stripe.CardError{}):
-			defer handleStripeErr()
-			log.Errorf("stripe card error: %v", err)
-			return entity.ErrPaymentProvider
-		case errors.Is(err, &stripe.APIError{}):
-			defer handleStripeErr()
-			log.Errorf("stripe api error: %v", err)
-			return entity.ErrPaymentProviderGeneric
-		case err != nil:
+		c, err := charge.New(params)
+		if err != nil {
+			if stripeErr, ok := err.(*stripe.Error); ok {
+				var resCode idempotency.ResponseCode
+				var resBody idempotency.ResponseBody
+				defer handleStripeErr(&resCode, &resBody)
+
+				if cardErr, ok := stripeErr.Err.(*stripe.CardError); ok {
+					resCode = idempotency.ResponseCodeErrPayment
+					resBody = idempotency.ResponseBody{Message: entity.ErrPaymentProvider.Error()}
+
+					log.Errorf("stripe card error: %v", cardErr.Error())
+					return entity.ErrPaymentProvider
+				}
+
+				resCode = idempotency.ResponseCodeErrPaymentGeneric
+				resBody = idempotency.ResponseBody{Message: entity.ErrPaymentProviderGeneric.Error()}
+
+				log.Errorf("stripe api error: %v", stripeErr.Error())
+				return entity.ErrPaymentProviderGeneric
+			}
+
 			log.Errorf("stripe api request error: %v", err)
 			return err
 		}

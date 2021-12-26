@@ -21,8 +21,10 @@ func (r RecoveryPoint) String() string {
 type ResponseCode int32
 
 const (
-	ResponseCodeOK       ResponseCode = http.StatusOK
-	ResponseCodeConflict ResponseCode = http.StatusConflict
+	ResponseCodeOK                ResponseCode = http.StatusOK
+	ResponseCodeConflict          ResponseCode = http.StatusConflict
+	ResponseCodeErrPayment        ResponseCode = http.StatusPaymentRequired
+	ResponseCodeErrPaymentGeneric ResponseCode = http.StatusServiceUnavailable
 )
 
 type ResponseBody struct {
