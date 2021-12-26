@@ -46,14 +46,14 @@ Requirements:
 # download and install both the project and dev dependencies
 make deps
 
+# start the dependencies (postgres and stripe-mock)
+docker-compose up -d
+
 # run db migrations, remember to export the $DSN env var before running it
 DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable make migrate
 
 # load db fixtures, remember to export the $DSN env var before running it
 DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable make fixtures
-
-# start the dependencies (postgres and stripe-mock)
-docker-compose up -d
 
 # start the API server
 make server
