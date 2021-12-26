@@ -19,7 +19,27 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/stripe/stripe-go/v72"
+	"gopkg.in/h2non/gock.v1"
 )
+
+const (
+	stripeURL = "http://stripeapi"
+)
+
+func init() {
+	maxRetries := int64(0)
+	stripeMockBackend := stripe.GetBackendWithConfig(
+		stripe.APIBackend,
+		&stripe.BackendConfig{
+			URL:               stripe.String(stripeURL),
+			LeveledLogger:     stripe.DefaultLeveledLogger,
+			MaxNetworkRetries: &maxRetries,
+		},
+	)
+	stripe.SetBackend(stripe.APIBackend, stripeMockBackend)
+	stripe.SetBackend(stripe.UploadsBackend, stripeMockBackend)
+}
 
 func TestGetIdempotencyKey(t *testing.T) {
 	ctx := context.Background()
@@ -463,6 +483,107 @@ func TestCreateCharge(t *testing.T) {
 		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
 	})
 
+	t.Run("Stripe card error", func(t *testing.T) {
+		key := gofakeit.UUID()
+		keyID := int64(gofakeit.Number(1, 1000))
+		userID := int64(gofakeit.Number(1, 1000))
+		ik := &entity.IdempotencyKey{
+			ID:             keyID,
+			IdempotencyKey: key,
+			UserID:         userID,
+		}
+
+		rd := &entity.Ride{}
+
+		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
+			Once().
+			Return(rd, nil)
+
+		gock.New(stripeURL).
+			Post("/v1/charges").
+			Reply(402).
+			BodyString(`{
+				"error": {
+					"type":"card_error",
+					"code": "balance_insufficient",
+					"message":"card is suspicious"
+				}
+			}`)
+
+		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+			Once().
+			Return(ik, nil)
+
+		err := uc.createCharge(ctx, ik, nil)
+
+		assert.Equal(t, entity.ErrPaymentProvider, err)
+		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
+		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+	})
+
+	t.Run("Stripe generic error", func(t *testing.T) {
+		key := gofakeit.UUID()
+		keyID := int64(gofakeit.Number(1, 1000))
+		userID := int64(gofakeit.Number(1, 1000))
+		ik := &entity.IdempotencyKey{
+			ID:             keyID,
+			IdempotencyKey: key,
+			UserID:         userID,
+		}
+
+		rd := &entity.Ride{}
+
+		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
+			Once().
+			Return(rd, nil)
+
+		gock.New(stripeURL).
+			Post("/v1/charges").
+			Reply(503).
+			BodyString(`{
+				"error": {
+					"type":"api_error",
+					"message":"system is down"
+				}
+			}`)
+
+		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+			Once().
+			Return(ik, nil)
+
+		err := uc.createCharge(ctx, ik, nil)
+
+		assert.Equal(t, entity.ErrPaymentProviderGeneric, err)
+		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
+		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+	})
+
+	t.Run("Stripe unknown error", func(t *testing.T) {
+		key := gofakeit.UUID()
+		keyID := int64(gofakeit.Number(1, 1000))
+		userID := int64(gofakeit.Number(1, 1000))
+		ik := &entity.IdempotencyKey{
+			ID:             keyID,
+			IdempotencyKey: key,
+			UserID:         userID,
+		}
+
+		rd := &entity.Ride{}
+
+		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
+			Once().
+			Return(rd, nil)
+
+		gock.New(stripeURL).
+			Post("/v1/charges").
+			ReplyError(errors.New("unknown error"))
+
+		err := uc.createCharge(ctx, ik, nil)
+
+		assert.Error(t, err)
+		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
+	})
+
 	t.Run("Error on UpdateRide", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
@@ -481,6 +602,11 @@ func TestCreateCharge(t *testing.T) {
 			Once().
 			Return(rd, nil)
 
+		gock.New(stripeURL).
+			Post("/v1/charges").
+			Reply(200).
+			JSON(map[string]string{"foo": "bar"})
+
 		mockDS.On("UpdateRide", ctx, rd).
 			Once().
 			Return(nil, retErr)
@@ -491,8 +617,6 @@ func TestCreateCharge(t *testing.T) {
 		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
 		mockDS.AssertCalled(t, "UpdateRide", ctx, rd)
 	})
-
-	// TODO: include tests for Stripe call
 
 	t.Run("Error on UpdateIdempotencyKey", func(t *testing.T) {
 		key := gofakeit.UUID()
@@ -511,6 +635,11 @@ func TestCreateCharge(t *testing.T) {
 		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
 			Once().
 			Return(rd, nil)
+
+		gock.New(stripeURL).
+			Post("/v1/charges").
+			Reply(200).
+			JSON(map[string]string{"foo": "bar"})
 
 		mockDS.On("UpdateRide", ctx, rd).
 			Once().
@@ -543,6 +672,11 @@ func TestCreateCharge(t *testing.T) {
 		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
 			Once().
 			Return(rd, nil)
+
+		gock.New(stripeURL).
+			Post("/v1/charges").
+			Reply(200).
+			JSON(map[string]string{"foo": "bar"})
 
 		mockDS.On("UpdateRide", ctx, rd).
 			Once().
@@ -690,7 +824,10 @@ func TestCreate(t *testing.T) {
 	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
 	mockDS := &mocks.Datastore{}
 
-	uc := NewRideUseCase(mockCfg, mockDS)
+	uc := rideUseCase{
+		cfg:   mockCfg,
+		store: mockDS,
+	}
 
 	jsonRide, err := json.Marshal(entity.Ride{
 		OriginLat: gofakeit.Float64(),
@@ -950,6 +1087,11 @@ func TestCreate(t *testing.T) {
 			Return(&entity.AuditRecord{}, nil)
 
 		// Create Charge
+		gock.New(stripeURL).
+			Post("/v1/charges").
+			Reply(200).
+			JSON(map[string]string{"foo": "bar"})
+
 		mockDS.On("UpdateRide", ctx, rd).
 			Once().
 			Return(rd, nil)
