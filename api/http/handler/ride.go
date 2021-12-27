@@ -40,7 +40,7 @@ func NewRideHandler(uc rocketride.RideUseCase) *RideHandler {
 }
 
 func (r *RideHandler) Create(c echo.Context) error {
-	userID, err := r.GetUserID(c)
+	user, err := r.GetUserFromCtx(c)
 	if err != nil {
 		return err
 	}
@@ -61,10 +61,11 @@ func (r *RideHandler) Create(c echo.Context) error {
 
 	ik := &entity.IdempotencyKey{
 		IdempotencyKey: cr.IdemKey,
-		UserID:         userID,
 		RequestMethod:  c.Request().Method,
 		RequestPath:    c.Request().RequestURI,
 		RequestParams:  rp,
+		UserID:         user.ID,
+		User:           user,
 	}
 
 	ik, err = r.uc.Create(c.Request().Context(), ik, rd)

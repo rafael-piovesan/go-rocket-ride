@@ -25,6 +25,11 @@ import (
 func TestCreate(t *testing.T) {
 	e := echo.New()
 	uc := &mocks.RideUseCase{}
+	user := entity.User{
+		ID:               gofakeit.Int64(),
+		Email:            gofakeit.Email(),
+		StripeCustomerID: gofakeit.UUID(),
+	}
 	handler := NewRideHandler(uc)
 
 	callArgs := []interface{}{
@@ -82,7 +87,7 @@ func TestCreate(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			c.Set("user-id", int64(0))
+			c.Set(string(entity.UserCtxKey), user)
 
 			err := handler.Create(c)
 
@@ -143,7 +148,7 @@ func TestCreate(t *testing.T) {
 			req.Header.Set("idempotency-key", gofakeit.UUID())
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			c.Set("user-id", int64(0))
+			c.Set(string(entity.UserCtxKey), user)
 
 			err := handler.Create(c)
 
@@ -211,7 +216,7 @@ func TestCreate(t *testing.T) {
 			req.Header.Set("idempotency-key", gofakeit.UUID())
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			c.Set("user-id", int64(0))
+			c.Set(string(entity.UserCtxKey), user)
 
 			err := handler.Create(c)
 
@@ -241,7 +246,7 @@ func TestCreate(t *testing.T) {
 		req.Header.Set("idempotency-key", gofakeit.UUID())
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		c.Set("user-id", int64(0))
+		c.Set(string(entity.UserCtxKey), user)
 
 		err = handler.Create(c)
 

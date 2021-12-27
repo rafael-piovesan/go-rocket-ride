@@ -46,9 +46,7 @@ func (u *UserMiddleware) Handle(next echo.HandlerFunc) echo.HandlerFunc {
 			return echo.NewHTTPError(http.StatusUnauthorized, entity.ErrPermissionDenied.Error())
 		}
 
-		// FIXME: probably it's not ideal to leave the key fixed. Find a place to set
-		// it as a constant.
-		c.Set("user-id", user.ID)
+		c.Set(string(entity.UserCtxKey), user)
 
 		return next(c)
 	}

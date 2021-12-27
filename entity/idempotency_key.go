@@ -20,4 +20,5 @@ type IdempotencyKey struct {
 	ResponseBody   *idempotency.ResponseBody
 	RecoveryPoint  idempotency.RecoveryPoint
 	UserID         int64
+	User           User `json:"-" bun:"-"`
 }
