@@ -43,8 +43,8 @@ func (h *Handler) BindAndValidate(c echo.Context, i interface{}) error {
 	return nil
 }
 
-func (h *Handler) GetUserFromCtx(c echo.Context) (uid entity.User, err error) {
-	uid, ok := c.Get(string(entity.UserCtxKey)).(entity.User)
+func (h *Handler) GetUserFromCtx(c echo.Context) (ur *entity.User, err error) {
+	ur, ok := c.Get(string(entity.UserCtxKey)).(*entity.User)
 	if !ok {
 		err = echo.NewHTTPError(http.StatusUnauthorized, entity.ErrPermissionDenied.Error())
 	}

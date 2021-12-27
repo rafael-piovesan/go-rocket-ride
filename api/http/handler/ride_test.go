@@ -25,7 +25,7 @@ import (
 func TestCreate(t *testing.T) {
 	e := echo.New()
 	uc := &mocks.RideUseCase{}
-	user := entity.User{
+	user := &entity.User{
 		ID:               gofakeit.Int64(),
 		Email:            gofakeit.Email(),
 		StripeCustomerID: gofakeit.UUID(),

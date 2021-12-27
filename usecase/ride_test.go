@@ -487,11 +487,16 @@ func TestCreateCharge(t *testing.T) {
 	t.Run("Stripe card error", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
-		userID := int64(gofakeit.Number(1, 1000))
+		user := &entity.User{
+			ID:               gofakeit.Int64(),
+			Email:            gofakeit.Email(),
+			StripeCustomerID: gofakeit.UUID(),
+		}
 		ik := &entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
-			UserID:         userID,
+			UserID:         user.ID,
+			User:           user,
 		}
 
 		rd := &entity.Ride{}
@@ -525,11 +530,16 @@ func TestCreateCharge(t *testing.T) {
 	t.Run("Stripe generic error", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
-		userID := int64(gofakeit.Number(1, 1000))
+		user := &entity.User{
+			ID:               gofakeit.Int64(),
+			Email:            gofakeit.Email(),
+			StripeCustomerID: gofakeit.UUID(),
+		}
 		ik := &entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
-			UserID:         userID,
+			UserID:         user.ID,
+			User:           user,
 		}
 
 		rd := &entity.Ride{}
@@ -562,11 +572,16 @@ func TestCreateCharge(t *testing.T) {
 	t.Run("Stripe unknown error", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
-		userID := int64(gofakeit.Number(1, 1000))
+		user := &entity.User{
+			ID:               gofakeit.Int64(),
+			Email:            gofakeit.Email(),
+			StripeCustomerID: gofakeit.UUID(),
+		}
 		ik := &entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
-			UserID:         userID,
+			UserID:         user.ID,
+			User:           user,
 		}
 
 		rd := &entity.Ride{}
@@ -588,11 +603,16 @@ func TestCreateCharge(t *testing.T) {
 	t.Run("Error on UpdateRide", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
-		userID := int64(gofakeit.Number(1, 1000))
+		user := &entity.User{
+			ID:               gofakeit.Int64(),
+			Email:            gofakeit.Email(),
+			StripeCustomerID: gofakeit.UUID(),
+		}
 		ik := &entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
-			UserID:         userID,
+			UserID:         user.ID,
+			User:           user,
 		}
 
 		rd := &entity.Ride{}
@@ -622,11 +642,16 @@ func TestCreateCharge(t *testing.T) {
 	t.Run("Error on UpdateIdempotencyKey", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
-		userID := int64(gofakeit.Number(1, 1000))
+		user := &entity.User{
+			ID:               gofakeit.Int64(),
+			Email:            gofakeit.Email(),
+			StripeCustomerID: gofakeit.UUID(),
+		}
 		ik := &entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
-			UserID:         userID,
+			UserID:         user.ID,
+			User:           user,
 		}
 
 		rd := &entity.Ride{}
@@ -661,11 +686,16 @@ func TestCreateCharge(t *testing.T) {
 	t.Run("Success on createCharge", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
-		userID := int64(gofakeit.Number(1, 1000))
+		user := &entity.User{
+			ID:               gofakeit.Int64(),
+			Email:            gofakeit.Email(),
+			StripeCustomerID: gofakeit.UUID(),
+		}
 		ik := &entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
-			UserID:         userID,
+			UserID:         user.ID,
+			User:           user,
 		}
 
 		rd := &entity.Ride{}
@@ -1048,11 +1078,16 @@ func TestCreate(t *testing.T) {
 	t.Run("Success on Create", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
-		userID := int64(gofakeit.Number(1, 1000))
+		user := &entity.User{
+			ID:               gofakeit.Int64(),
+			Email:            gofakeit.Email(),
+			StripeCustomerID: gofakeit.UUID(),
+		}
 		ik := &entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
-			UserID:         userID,
+			UserID:         user.ID,
+			User:           user,
 			RequestParams:  jsonRide,
 			RecoveryPoint:  idempotency.RecoveryPointStarted,
 		}
@@ -1075,7 +1110,7 @@ func TestCreate(t *testing.T) {
 			Return(ik, nil)
 
 		// Get Idempotency Key
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
+		mockDS.On("GetIdempotencyKey", ctx, key, user.ID).
 			Once().
 			Return(ik, nil)
 
@@ -1107,7 +1142,7 @@ func TestCreate(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.Equal(t, ik, res)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
+		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, user.ID)
 		mockDS.AssertCalled(t, "CreateRide", ctx, rd)
 		mockDS.AssertCalled(t, "CreateAuditRecord", ctx, mock.AnythingOfType("*entity.AuditRecord"))
 		mockDS.AssertCalled(t, "UpdateRide", ctx, rd)
