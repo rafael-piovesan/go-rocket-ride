@@ -229,16 +229,17 @@ func (r *rideUseCase) createCharge(ctx context.Context, ik *entity.IdempotencyKe
 		// to us so that we can guarantee uniqueness to Stripe across all
 		// Rocket Rides accounts.
 		stripeIK := fmt.Sprintf("go-rocket-ride-%v", ik.ID)
+		customerID := ik.User.StripeCustomerID
 
 		// Rocket Rides is still a new service, so during our prototype phase
 		// we're going to give $20 fixed-cost rides to everyone, regardless of
 		// distance. We'll implement a better algorithm later to better
 		// represent the cost in time and jetfuel on the part of our pilots.
 		params := &stripe.ChargeParams{
-			Params:   stripe.Params{IdempotencyKey: &stripeIK},
-			Amount:   stripe.Int64(2000),
-			Currency: stripe.String(string(stripe.CurrencyUSD)),
-			// TODO: include stripe-customer-id
+			Params:      stripe.Params{IdempotencyKey: &stripeIK},
+			Amount:      stripe.Int64(2000),
+			Currency:    stripe.String(string(stripe.CurrencyUSD)),
+			Customer:    &customerID,
 			Description: stripe.String(fmt.Sprintf("Charge for ride %v", ride.ID)),
 		}
 
