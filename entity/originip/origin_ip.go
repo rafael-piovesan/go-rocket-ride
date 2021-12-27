@@ -1,6 +1,10 @@
 package originip
 
-import "context"
+import (
+	"context"
+
+	"github.com/labstack/gommon/log"
+)
 
 type ipCtxKey struct{}
 
@@ -17,8 +21,10 @@ func NewContext(ctx context.Context, oip *OriginIP) context.Context {
 func FromCtx(ctx context.Context) *OriginIP {
 	oip, ok := ctx.Value(ipKey).(*OriginIP)
 	if !ok {
-		// FIXME: check what to do in case of error obtaining the Origin IP
-		return &OriginIP{IP: "127.0.0.1"}
+		log.Warn("incoming request IP not found")
+		return &OriginIP{IP: "192.168.0.1"}
 	}
+
+	log.Debugf("incoming request IP: %v", oip.IP)
 	return oip
 }

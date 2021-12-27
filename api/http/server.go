@@ -28,6 +28,9 @@ func NewServer(cfg rocketride.Config, store rocketride.Datastore) *Server {
 	e := echo.New()
 
 	// Middleware
+	im := cstmiddleware.NewIPMiddleware()
+	e.Use(im.Handle)
+
 	um := cstmiddleware.NewUserMiddleware(store)
 	e.Use(um.Handle)
 
