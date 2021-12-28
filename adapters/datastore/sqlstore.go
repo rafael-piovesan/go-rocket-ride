@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"runtime"
 
 	"github.com/uptrace/bun"
 
@@ -30,7 +31,17 @@ func (s *sqlStore) Atomic(ctx context.Context, fn func(store rocketride.Datastor
 
 	defer func() {
 		if p := recover(); p != nil {
-			err = fmt.Errorf("panic err: %v", p)
+			_ = tx.Rollback()
+
+			switch e := p.(type) {
+			case runtime.Error:
+				panic(e)
+			case error:
+				err = fmt.Errorf("panic err: %v", p)
+				return
+			default:
+				panic(e)
+			}
 		}
 		if err != nil {
 			if rbErr := tx.Rollback(); rbErr != nil {

@@ -103,7 +103,7 @@ func TestSQLStore(t *testing.T) {
 		}
 	})
 
-	t.Run("Rollback on panic", func(t *testing.T) {
+	t.Run("Rollback on panic with error", func(t *testing.T) {
 		_, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
 		require.ErrorIs(t, err, entity.ErrNotFound)
 
@@ -114,13 +114,36 @@ func TestSQLStore(t *testing.T) {
 			_, err = ds.CreateAuditRecord(ctx, ar)
 			require.NoError(t, err)
 
-			panic("panic rollback")
+			panic(errors.New("panic rollback"))
 		})
 
 		if assert.EqualError(t, err, "panic err: panic rollback") {
 			_, err = store.GetRideByIdempotencyKeyID(ctx, keyID)
 			assert.ErrorIs(t, err, entity.ErrNotFound)
 		}
+	})
+
+	t.Run("Rollback on panic without error", func(t *testing.T) {
+		_, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
+		require.ErrorIs(t, err, entity.ErrNotFound)
+
+		defer func() {
+			p := recover()
+			if assert.NotNil(t, p) && assert.Equal(t, "panic rollback", p) {
+				_, err = store.GetRideByIdempotencyKeyID(ctx, keyID)
+				assert.ErrorIs(t, err, entity.ErrNotFound)
+			}
+		}()
+
+		err = store.Atomic(ctx, func(ds rocketride.Datastore) error {
+			_, err := ds.CreateRide(ctx, ride)
+			require.NoError(t, err)
+
+			_, err = ds.CreateAuditRecord(ctx, ar)
+			require.NoError(t, err)
+
+			panic("panic rollback")
+		})
 	})
 
 	t.Run("Rollback on context canceled", func(t *testing.T) {
