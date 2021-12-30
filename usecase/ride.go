@@ -177,7 +177,7 @@ func (r *rideUseCase) createRide(
 			CreatedAt:    time.Now().UTC(),
 			Data:         ik.RequestParams,
 			OriginIP:     oip.IP,
-			ResourceID:   rd.ID,
+			ResourceID:   ride.ID,
 			ResourceType: audit.ResourceTypeRide,
 			UserID:       ik.UserID,
 		}
