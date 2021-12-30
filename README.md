@@ -1,10 +1,16 @@
 # go-rocket-ride
 
+## Related Articles
+Read more about this project's motivations and reasonings:
+* [Go (Golang): Clean Architecture & Repositories vs Transactions](https://medium.com/@rubens.piovesan/go-golang-clean-architecture-repositories-vs-transactions-9b3b7c953463)
+
+## Description
 This is a toy project based on [rocket-rides-atomic](https://github.com/brandur/rocket-rides-atomic) repo and, of course, on the original [Stripe's Rocket Rides](https://github.com/stripe/stripe-connect-rocketrides) demo as well. It aims to replicate the implementation of idempotency keys using Golang and Clean Architecture. Please refer to Brandur's amazing [article](https://brandur.org/idempotency-keys) about this topic for full details.
 
 Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#rocket-rides-atomic-) about the project:
 
 >The work done API service is separated into atomic phases, and as the name suggests, all the work done during the phase is guaranteed to be atomic. Midway through each API request a call is made out to Stripe's API which can't be rolled back if it fails, so if it does we rely on clients re-issuing the API request with the same Idempotency-Key header until its results are definitive. After any request is considered to be complete, the results are stored on the idempotency key relation and returned for any future requests that use the same key.
+
 
 ## Architecture & code organization
 
