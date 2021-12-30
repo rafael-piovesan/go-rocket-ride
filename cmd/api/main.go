@@ -7,6 +7,7 @@ import (
 	rocketride "github.com/rafael-piovesan/go-rocket-ride"
 	"github.com/rafael-piovesan/go-rocket-ride/adapters/datastore"
 	"github.com/rafael-piovesan/go-rocket-ride/api/http"
+	"github.com/rafael-piovesan/go-rocket-ride/pkg/stripemock"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/dialect/pgdialect"
 	"github.com/uptrace/bun/driver/pgdriver"
@@ -24,6 +25,9 @@ func main() {
 	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
 	db := bun.NewDB(sqldb, pgdialect.New())
 	store := datastore.NewStore(db)
+
+	// Replace the original Stripe API Backend with its mock
+	stripemock.Init()
 
 	// http server
 	httpServer := http.NewServer(cfg, store)

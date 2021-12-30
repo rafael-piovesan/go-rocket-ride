@@ -18,7 +18,6 @@ import (
 	"github.com/rafael-piovesan/go-rocket-ride/entity/idempotency"
 	"github.com/rafael-piovesan/go-rocket-ride/entity/originip"
 	"github.com/rafael-piovesan/go-rocket-ride/entity/stagedjob"
-	"github.com/rafael-piovesan/go-rocket-ride/pkg/stripemock"
 )
 
 type rideUseCase struct {
@@ -29,9 +28,6 @@ type rideUseCase struct {
 func NewRideUseCase(cfg rocketride.Config, ds rocketride.Datastore) rocketride.RideUseCase {
 	// setup Stripe's key
 	stripe.Key = cfg.StripeKey
-
-	// Replace the original Stripe API Backend with its mock
-	stripemock.Init()
 
 	return &rideUseCase{
 		cfg:   cfg,
