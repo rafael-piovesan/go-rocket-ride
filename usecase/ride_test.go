@@ -1045,7 +1045,7 @@ func TestCreate(t *testing.T) {
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide,
-			RecoveryPoint:  "unkown",
+			RecoveryPoint:  "unknown",
 		}
 
 		rd := &entity.Ride{}
