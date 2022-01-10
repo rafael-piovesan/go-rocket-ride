@@ -69,7 +69,7 @@ Once the server is up running, send requests to it:
 curl -i -w '\n' -X POST http://localhost:8080/ \
 -H 'content-type: application/json' \
 -H 'idempotency-key: key123' \
--H 'http-authorization: local.user@email.com' \
+-H 'authorization: local.user@email.com' \
 -d '{ "origin_lat": 0.0, "origin_lon": 0.0, "target_lat": 0.0, "target_lon": 0.0 }'
 ```
 

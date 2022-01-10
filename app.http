@@ -1,7 +1,7 @@
 POST http://localhost:8080/ HTTP/1.1
 content-type: application/json
 idempotency-key: key123
-http-authorization: local.user@email.com
+authorization: local.user@email.com
 
 {
     "origin_lat": 0.0,

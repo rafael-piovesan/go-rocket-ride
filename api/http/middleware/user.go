@@ -10,7 +10,7 @@ import (
 )
 
 type userRequest struct {
-	UserKey string `header:"http-authorization" validate:"required"`
+	UserKey string `header:"authorization" validate:"required"`
 }
 
 type UserMiddleware struct {
