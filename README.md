@@ -1,4 +1,5 @@
 # go-rocket-ride
+![Lint and Tests](https://github.com/rafael-piovesan/go-rocket-ride/actions/workflows/lint-tests.yml/badge.svg)
 
 ## Related Articles
 Read more about this project's motivations and reasonings:
