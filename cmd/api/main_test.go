@@ -43,7 +43,8 @@ func TestMain(t *testing.T) {
 	t.Run("Valid app config values", func(t *testing.T) {
 		_, _, err := startSubprocess(
 			t,
-			true, // force subprocess stop, otherwise it'd keep running
+			true,                           // force subprocess stop, otherwise it'd keep running
+			"STRIPE_MOCK_INIT_CHECK=false", // skip initial stripe mock check
 			"DB_SOURCE=postgresql://usr:pass@localhost:5432/db?sslmode=disable",
 			"SERVER_ADDRESS=0.0.0.0:8000",
 			"STRIPE_KEY=bar",

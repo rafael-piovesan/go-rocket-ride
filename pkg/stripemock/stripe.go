@@ -59,7 +59,7 @@ func Init() {
 	//
 	// See the incorrectly closed bug report here:
 	//
-	//     https://github.com/golang/go/issues/20645
+	//     https://github.com/golang/go/issues/20645git
 	//
 	err := http2.ConfigureTransport(transport)
 	if err != nil {
@@ -71,18 +71,21 @@ func Init() {
 		Transport: transport,
 	}
 
-	resp, err := httpClient.Get("https://localhost:" + port)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't reach stripe-mock at `localhost:%s` (%v). Is "+
-			"it running? Please see README for setup instructions.\n", port, err)
-		os.Exit(1)
-	}
-	version := resp.Header.Get("Stripe-Mock-Version")
-	if version != "master" && compareVersions(version, MockMinimumVersion) > 0 {
-		fmt.Fprintf(os.Stderr, "Your version of stripe-mock (%s) is too old. The "+
-			"minimum version to run this test suite is %s. Please see its "+
-			"repository for upgrade instructions.\n", version, MockMinimumVersion)
-		os.Exit(1)
+	check := os.Getenv("STRIPE_MOCK_INIT_CHECK")
+	if check != "false" {
+		resp, err := httpClient.Get("https://localhost:" + port)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Couldn't reach stripe-mock at `localhost:%s` (%v). Is "+
+				"it running? Please see README for setup instructions.\n", port, err)
+			os.Exit(1)
+		}
+		version := resp.Header.Get("Stripe-Mock-Version")
+		if version != "master" && compareVersions(version, MockMinimumVersion) > 0 {
+			fmt.Fprintf(os.Stderr, "Your version of stripe-mock (%s) is too old. The "+
+				"minimum version to run this test suite is %s. Please see its "+
+				"repository for upgrade instructions.\n", version, MockMinimumVersion)
+			os.Exit(1)
+		}
 	}
 
 	stripe.Key = "sk_test_myTestKey"
