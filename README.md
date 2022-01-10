@@ -1,4 +1,6 @@
 # go-rocket-ride
+![Lint and Tests](https://github.com/rafael-piovesan/go-rocket-ride/actions/workflows/lint-tests.yml/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/rafael-piovesan/go-rocket-ride)](https://goreportcard.com/report/github.com/rafael-piovesan/go-rocket-ride)
 
 ## Related Articles
 Read more about this project's motivations and reasonings:
