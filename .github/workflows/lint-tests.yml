@@ -19,6 +19,10 @@ jobs:
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+          skip-pkg-cache: true
+          skip-build-cache: true
 
   tests:
     runs-on: ubuntu-20.04
