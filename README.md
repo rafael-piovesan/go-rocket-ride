@@ -5,6 +5,7 @@
 ## Related Articles
 Read more about this project's motivations and reasonings:
 * [Go (Golang): Clean Architecture & Repositories vs Transactions](https://medium.com/@rubens.piovesan/go-golang-clean-architecture-repositories-vs-transactions-9b3b7c953463)
+* [Go (Golang): Testing tools & tips to step up your game](https://medium.com/@rubens.piovesan/go-golang-testing-tools-tips-to-step-up-your-game-4ed165a5b3b5)
 
 ## Description
 This is a toy project based on [rocket-rides-atomic](https://github.com/brandur/rocket-rides-atomic) repo and, of course, on the original [Stripe's Rocket Rides](https://github.com/stripe/stripe-connect-rocketrides) demo as well. It aims to replicate the implementation of idempotency keys using Golang and Clean Architecture. Please refer to Brandur's amazing [article](https://brandur.org/idempotency-keys) about this topic for full details.
