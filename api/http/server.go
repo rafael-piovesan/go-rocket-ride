@@ -24,8 +24,6 @@ type Server struct {
 }
 
 func NewServer(cfg rocketride.Config, store rocketride.Datastore) *Server {
-	log.SetLevel(log.DEBUG)
-
 	e := echo.New()
 
 	// Middleware
@@ -59,7 +57,7 @@ func (s *Server) Start() {
 	// For more details: https://medium.com/@momchil.dev/proper-http-shutdown-in-go-bd3bfaade0f2
 	go func() {
 		if err := s.e.Start(s.cfg.ServerAddress); !errors.Is(err, http.ErrServerClosed) {
-			s.e.Logger.Fatal("shutting down the server")
+			log.Fatalf("error running server: %v", err)
 		}
 	}()
 
@@ -72,6 +70,8 @@ func (s *Server) Start() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := s.e.Shutdown(ctx); err != nil {
-		s.e.Logger.Fatal(err)
+		log.Errorf("error shutting down server: %v", err)
+	} else {
+		log.Info("server shutdown gracefully")
 	}
 }
