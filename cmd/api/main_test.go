@@ -40,8 +40,24 @@ func TestMain(t *testing.T) {
 		t.Fatalf("process ran with err %v, want exit status 1", err)
 	})
 
+	t.Run("Invalid Server Address", func(t *testing.T) {
+		stdout, _, err := startSubprocess(
+			t,
+			false,                          // force subprocess stop, otherwise it'd keep running
+			"STRIPE_MOCK_INIT_CHECK=false", // skip initial stripe mock check
+			"DB_SOURCE=postgresql://usr:pass@localhost:5432/db?sslmode=disable",
+			"SERVER_ADDRESS=0.0.0.0:as",
+			"STRIPE_KEY=bar",
+		)
+		if e, ok := err.(*exec.ExitError); ok && !e.Success() {
+			assert.Contains(t, stdout, "error running server")
+			return
+		}
+		t.Fatalf("process ran with err %v, want exit status 1", err)
+	})
+
 	t.Run("Valid app config values", func(t *testing.T) {
-		_, _, err := startSubprocess(
+		stdout, _, err := startSubprocess(
 			t,
 			true,                           // force subprocess stop, otherwise it'd keep running
 			"STRIPE_MOCK_INIT_CHECK=false", // skip initial stripe mock check
@@ -50,6 +66,7 @@ func TestMain(t *testing.T) {
 			"STRIPE_KEY=bar",
 		)
 		assert.Nil(t, err)
+		assert.Contains(t, stdout, "server shutdown gracefully")
 	})
 }
 
