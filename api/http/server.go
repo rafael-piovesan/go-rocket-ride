@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"os/signal"
@@ -51,9 +52,13 @@ func NewServer(cfg rocketride.Config, store rocketride.Datastore) *Server {
 }
 
 func (s *Server) Start() {
-	// Start server
+	// Start server in a separate goroutine, this way when the server is shutdown "s.e.Start" will
+	// return promptly, and the call to "s.e.Shutdown" is the one that will wait for all other
+	// resources to be properly freed. If it was the other way around, the application would just
+	// exit without gracefully shutting down the server.
+	// For more details: https://medium.com/@momchil.dev/proper-http-shutdown-in-go-bd3bfaade0f2
 	go func() {
-		if err := s.e.Start(s.cfg.ServerAddress); err != nil && err != http.ErrServerClosed {
+		if err := s.e.Start(s.cfg.ServerAddress); !errors.Is(err, http.ErrServerClosed) {
 			s.e.Logger.Fatal("shutting down the server")
 		}
 	}()
@@ -61,9 +66,9 @@ func (s *Server) Start() {
 	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 10 seconds.
 	// Use a buffered channel to avoid missing signals as recommended for signal.Notify
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-	signal.Notify(quit, syscall.SIGTERM)
+	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := s.e.Shutdown(ctx); err != nil {
