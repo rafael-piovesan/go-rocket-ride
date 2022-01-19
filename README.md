@@ -19,13 +19,13 @@ Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#roc
 
 ```sh
 .
-├── datastore         # app data stores (e.g., PostgreSQL, MySQL, etc.)
-│   ├── bun           # Postgres data access based on Bun ORM 
-│   └── sqlc          # Postgres data access based on Sqlc
 ├── api               # application ports
 │   └── http          # HTTP transport layer
 ├── cmd               # application commands
 │   └── api           # 'main.go' for running the API server
+├── datastore         # app data stores (e.g., PostgreSQL, MySQL, etc.)
+│   ├── bun           # Postgres data access based on Bun ORM 
+│   └── sqlc          # Postgres data access based on Sqlc
 ├── db                # database related files
 │   ├── fixtures      # fixtures used in integration tests and local development
 │   ├── migrations    # db migrations
