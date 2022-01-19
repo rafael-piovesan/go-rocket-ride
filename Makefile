@@ -8,6 +8,7 @@ deps: ## Install dependencies
 	go mod tidy
 	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 	go install github.com/segmentio/golines@latest
+	go install github.com/kyleconroy/sqlc/cmd/sqlc@latest
 	go install github.com/vektra/mockery/cmd/mockery
 
 migrate: ## Run db migrations (expects $DSN env var, so, run it with: 'DSN=<postgres dsn> make fixtures')
@@ -21,6 +22,9 @@ lint: ## Run linter
 
 format: ## Format source code
 	golines . -m 120 -w --ignore-generated
+
+sqlc: ## Generate sqlc files
+	sqlc generate
 
 mock: ## Generate interfaces mocks
 	mockery -name Datastore
