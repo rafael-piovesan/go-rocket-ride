@@ -1,16 +1,14 @@
 package main
 
 import (
-	"database/sql"
 	"log"
+	"strings"
 
 	rocketride "github.com/rafael-piovesan/go-rocket-ride"
-	"github.com/rafael-piovesan/go-rocket-ride/adapters/datastore"
 	"github.com/rafael-piovesan/go-rocket-ride/api/http"
+	bunstore "github.com/rafael-piovesan/go-rocket-ride/datastore/bun"
+	sqlcstore "github.com/rafael-piovesan/go-rocket-ride/datastore/sqlc"
 	"github.com/rafael-piovesan/go-rocket-ride/pkg/stripemock"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/pgdialect"
-	_ "github.com/uptrace/bun/driver/pgdriver"
 )
 
 func main() {
@@ -21,14 +19,23 @@ func main() {
 	}
 
 	// database connection
-	dsn := cfg.DBSource
-	sqldb, err := sql.Open("pg", dsn)
+	da := strings.ToLower(cfg.DatastoreAccess)
+	var store rocketride.Datastore
+
+	switch da {
+	case "bun":
+		store, err = bunstore.NewStore(cfg.DBSource)
+	case "sqlc":
+		store, err = sqlcstore.NewStore(cfg.DBSource)
+	default:
+		log.Printf("invalid store type %v", cfg.DatastoreAccess)
+		store, err = bunstore.NewStore(cfg.DBSource)
+	}
+
+	log.Printf("using [%v] datastore access", da)
 	if err != nil {
 		log.Fatalf("cannot open database: %v", err)
 	}
-
-	db := bun.NewDB(sqldb, pgdialect.New())
-	store := datastore.NewStore(db)
 
 	// Replace the original Stripe API Backend with its mock
 	stripemock.Init()
