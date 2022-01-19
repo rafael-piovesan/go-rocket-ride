@@ -1,11 +1,10 @@
 //go:build integration
 // +build integration
 
-package datastore
+package sqlc
 
 import (
 	"context"
-	"database/sql"
 	"testing"
 
 	"github.com/rafael-piovesan/go-rocket-ride/entity"
@@ -14,9 +13,6 @@ import (
 	"github.com/rafael-piovesan/go-rocket-ride/pkg/testcontainer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/pgdialect"
-	"github.com/uptrace/bun/driver/pgdriver"
 )
 
 func TestStagedJob(t *testing.T) {
@@ -32,10 +28,8 @@ func TestStagedJob(t *testing.T) {
 	require.NoError(t, err)
 
 	// connect to database
-	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
-	db := bun.NewDB(sqldb, pgdialect.New())
-
-	store := NewStore(db)
+	store, err := NewStore(dsn)
+	require.NoError(t, err)
 
 	t.Run("Create Staged Job", func(t *testing.T) {
 		sj := &entity.StagedJob{

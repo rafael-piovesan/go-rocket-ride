@@ -1,0 +1,18 @@
+version: 1
+packages:
+  - name: "sqlc"
+    path: "./datastore/sqlc"
+    engine: "postgresql"
+    schema: "./db/migrations"
+    queries: "./db/queries"
+overrides:
+  - column: "audit_records.origin_ip"
+    go_type: "string"
+  - column: "rides.origin_lat"
+    go_type: "float64"
+  - column: "rides.origin_lon"
+    go_type: "float64"
+  - column: "rides.target_lat"
+    go_type: "float64"
+  - column: "rides.target_lon"
+    go_type: "float64"
