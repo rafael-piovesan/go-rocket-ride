@@ -1,11 +1,10 @@
 //go:build integration
 // +build integration
 
-package datastore
+package bun
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 
@@ -19,9 +18,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tabbed/pqtype"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/pgdialect"
-	"github.com/uptrace/bun/driver/pgdriver"
 )
 
 func TestSQLStore(t *testing.T) {
@@ -55,10 +51,8 @@ func TestSQLStore(t *testing.T) {
 	require.NoError(t, err)
 
 	// connect to database
-	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
-	db := bun.NewDB(sqldb, pgdialect.New())
-
-	store := NewStore(db)
+	store, err := NewStore(dsn)
+	require.NoError(t, err)
 
 	// test entities
 	ride := &entity.Ride{

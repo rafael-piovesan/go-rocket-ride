@@ -1,4 +1,4 @@
-package datastore
+package bun
 
 import (
 	"context"
@@ -7,6 +7,10 @@ import (
 	"runtime"
 
 	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
+
+	// loading bun's official Postgres driver.
+	_ "github.com/uptrace/bun/driver/pgdriver"
 
 	rocketride "github.com/rafael-piovesan/go-rocket-ride"
 )
@@ -16,11 +20,18 @@ type sqlStore struct {
 	db   bun.IDB
 }
 
-func NewStore(db *bun.DB) rocketride.Datastore {
-	return &sqlStore{
+func NewStore(dsn string) (s rocketride.Datastore, err error) {
+	sqldb, err := sql.Open("pg", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	db := bun.NewDB(sqldb, pgdialect.New())
+	s = &sqlStore{
 		conn: db,
 		db:   db,
 	}
+	return
 }
 
 func (s *sqlStore) Atomic(ctx context.Context, fn func(store rocketride.Datastore) error) (err error) {

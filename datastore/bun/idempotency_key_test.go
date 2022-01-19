@@ -1,11 +1,10 @@
 //go:build integration
 // +build integration
 
-package datastore
+package bun
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -18,9 +17,6 @@ import (
 	"github.com/rafael-piovesan/go-rocket-ride/pkg/testfixtures"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/pgdialect"
-	"github.com/uptrace/bun/driver/pgdriver"
 )
 
 func TestIdempotencyKey(t *testing.T) {
@@ -45,10 +41,8 @@ func TestIdempotencyKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// conntect to database
-	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
-	db := bun.NewDB(sqldb, pgdialect.New())
-
-	store := NewStore(db)
+	store, err := NewStore(dsn)
+	require.NoError(t, err)
 
 	// test entity
 	now := time.Now()
