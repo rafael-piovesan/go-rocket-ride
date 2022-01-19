@@ -19,15 +19,17 @@ Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#roc
 
 ```sh
 .
-├── adapters          # external data sources (e.g., 3rd party APIs, databases, etc.)
-│   └── datastore     # Postgres repository
+├── datastore         # app data stores (e.g., PostgreSQL, MySQL, etc.)
+│   ├── bun           # Postgres data access based on Bun ORM 
+│   └── sqlc          # Postgres data access based on Sqlc
 ├── api               # application ports
 │   └── http          # HTTP transport layer
 ├── cmd               # application commands
 │   └── api           # 'main.go' for running the API server
 ├── db                # database related files
 │   ├── fixtures      # fixtures used in integration tests and local development
-│   └── migrations    # db migrations
+│   ├── migrations    # db migrations
+│   └── queries       # Sqlc db queries
 ├── entity            # application entities (including their specific enum types)
 ├── mocks             # interface mocks for unit testing
 ├── pkg               # 3rd party lib wrappers
@@ -35,9 +37,9 @@ Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#roc
 │   ├── stripemock    # set Stripe's API SDK Backend to use stripe-mock
 │   ├── testcontainer # create db containers used in integration tests
 │   ├── testfixtures  # load db fixtures needed for integration tests
-│   └── tools         # keeps track of dev deps
+│   └── tools         # keep track of dev deps
 ├── usecase           # application use cases
-├── config.go         # handles config via env vars and .env files
+├── config.go         # handle config via env vars and .env files
 └── rocketride.go     # interface definitions
 ```
 
