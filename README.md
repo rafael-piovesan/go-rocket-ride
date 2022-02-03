@@ -109,6 +109,11 @@ And here's a sample `settings.json` file with some suggestions:
   ],
   "go.toolsManagement.autoUpdate": true,
   "go.useLanguageServer": true,
+  "go.lintFlags": [
+    "--build-tags=integration,unit"
+  ],
+  "go.lintOnSave": "package",
+  "go.lintTool": "golangci-lint",
   "gopls": {
     "build.buildFlags": [
       "-tags=integration,unit"
