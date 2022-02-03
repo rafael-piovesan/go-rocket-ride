@@ -89,8 +89,43 @@ migrate      # Run db migrations (expects $DSN env var, i.e., 'DSN=<postgres dsn
 fixtures     # Load db fixtures (expects $DSN env var, i.e., 'DSN=<postgres dsn> make fixtures')
 lint         # Run linter
 format       # Format source code
+sqlc         # Generate sqlc files
 mock         # Generate interfaces mocks
 integration  # Run integration tests
 unit         # Run unit tests
 server       # Run API server locally
+```
+
+## IDE
+If you're using VS Code, make sure to check out this article with some tips on how to setup your IDE: [Setting up VS Code for Golang](https://medium.com/@rubens.piovesan/setting-up-vs-code-for-golang-2021-4cb6ebdd557c).
+
+And here's a sample `settings.json` file with some suggestions:
+
+```json
+{
+  "go.testFlags": [
+    "-failfast",
+    "-v"
+  ],
+  "go.toolsManagement.autoUpdate": true,
+  "go.useLanguageServer": true,
+  "gopls": {
+    "build.buildFlags": [
+      "-tags=integration,unit"
+    ],
+    "ui.semanticTokens": true
+  },
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "match": "\\.go$",
+        "cmd": "golines ${file} -m 120 -w --ignore-generated --no-reformat-tags"
+      }
+    ]
+  },
+  "editor.fontFamily": "JetBrains Mono",
+  "editor.fontLigatures": true,
+  "editor.fontWeight": 300,
+  "editor.fontSize": 13,
+}
 ```
