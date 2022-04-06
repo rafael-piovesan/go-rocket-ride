@@ -2,3 +2,4 @@
 .env
 app.env
 *.session.sql
+datastore/.DS_Store

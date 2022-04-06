@@ -24,7 +24,7 @@ Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#roc
 ├── cmd               # application commands
 │   └── api           # 'main.go' for running the API server
 ├── datastore         # app data stores (e.g., PostgreSQL, MySQL, etc.)
-│   ├── bun           # Postgres data access based on Bun ORM 
+│   ├── bun           # Postgres data access based on Bun ORM
 │   └── sqlc          # Postgres data access based on Sqlc
 ├── db                # database related files
 │   ├── fixtures      # fixtures used in integration tests and local development
@@ -66,6 +66,9 @@ DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable make mig
 # load db fixtures, remember to export the $DSN env var before running it
 DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable make fixtures
 
+# generate JET classes
+make jet
+
 # start the API server
 make server
 ```
@@ -90,6 +93,7 @@ fixtures     # Load db fixtures (expects $DSN env var, i.e., 'DSN=<postgres dsn>
 lint         # Run linter
 format       # Format source code
 sqlc         # Generate sqlc files
+jet          # Generate jet files
 mock         # Generate interfaces mocks
 integration  # Run integration tests
 unit         # Run unit tests
