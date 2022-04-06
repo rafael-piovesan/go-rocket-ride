@@ -21,7 +21,7 @@ type Config struct {
 	DBSource        string `mapstructure:"DB_SOURCE"  validate:"required"`
 	ServerAddress   string `mapstructure:"SERVER_ADDRESS"  validate:"required"`
 	StripeKey       string `mapstructure:"STRIPE_KEY"  validate:"required"`
-	DatastoreAccess string `mapstructure:"DATASTORE_ACCESS" validate:"required,oneof=bun sqlc"`
+	DatastoreAccess string `mapstructure:"DATASTORE_ACCESS" validate:"required,oneof=bun sqlc jet"`
 }
 
 // LoadConfig reads configuration from file or environment variables.
