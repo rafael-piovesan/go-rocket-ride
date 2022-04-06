@@ -50,6 +50,7 @@ require (
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/fzipp/gocyclo v0.3.1 // indirect
 	github.com/go-critic/go-critic v0.6.1 // indirect
+	github.com/go-jet/jet/v2 v2.7.1 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-toolsmith/astcast v1.0.0 // indirect
