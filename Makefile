@@ -10,6 +10,7 @@ deps: ## Install dependencies
 	go install github.com/segmentio/golines@latest
 	go install github.com/kyleconroy/sqlc/cmd/sqlc@latest
 	go install github.com/vektra/mockery/cmd/mockery
+	go install github.com/go-jet/jet/v2/cmd/jet@latest
 
 migrate: ## Run db migrations (expects $DSN env var, so, run it with: 'DSN=<postgres dsn> make fixtures')
 	migrate -path db/migrations -database ${DSN} up
@@ -25,6 +26,9 @@ format: ## Format source code
 
 sqlc: ## Generate sqlc files
 	sqlc generate
+
+jet: ## Generate JET files
+	jet -dsn=${DSN} -schema=public -path=./datastore/jet
 
 mock: ## Generate interfaces mocks
 	mockery -name Datastore
