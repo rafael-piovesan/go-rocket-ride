@@ -27,8 +27,8 @@ sqlc: ## Generate sqlc files
 	sqlc generate
 
 mock: ## Generate interfaces mocks
-	mockery -name Datastore
-	mockery -name RideUseCase
+	mockery --name Datastore
+	mockery --name RideUseCase
 
 integration: ## Run integration tests
 	go test -v -tags=integration ./...
