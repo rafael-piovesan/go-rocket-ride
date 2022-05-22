@@ -119,18 +119,6 @@ And here's a sample `settings.json` file with some suggestions:
       "-tags=integration,unit"
     ],
     "ui.semanticTokens": true
-  },
-  "emeraldwalk.runonsave": {
-    "commands": [
-      {
-        "match": "\\.go$",
-        "cmd": "golines ${file} -m 120 -w --ignore-generated --no-reformat-tags"
-      }
-    ]
-  },
-  "editor.fontFamily": "JetBrains Mono",
-  "editor.fontLigatures": true,
-  "editor.fontWeight": 300,
-  "editor.fontSize": 13,
+  }
 }
 ```
