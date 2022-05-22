@@ -7,7 +7,6 @@ require (
 	github.com/go-testfixtures/testfixtures/v3 v3.6.2
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/labstack/gommon v0.3.0
-	github.com/lib/pq v1.10.5
 	github.com/spf13/viper v1.11.0
 	github.com/stretchr/testify v1.7.1
 	github.com/testcontainers/testcontainers-go v0.12.0
@@ -24,6 +23,7 @@ require (
 	github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
+	github.com/lib/pq v1.10.5 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

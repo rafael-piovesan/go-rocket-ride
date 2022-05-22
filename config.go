@@ -17,11 +17,10 @@ const (
 // Config stores all configuration of the application.
 // The values are read by viper from a config file or environment variable.
 type Config struct {
-	IdemKeyTimeout  int    `mapstructure:"IDEM_KEY_TIMEOUT" validate:"required"`
-	DBSource        string `mapstructure:"DB_SOURCE"  validate:"required"`
-	ServerAddress   string `mapstructure:"SERVER_ADDRESS"  validate:"required"`
-	StripeKey       string `mapstructure:"STRIPE_KEY"  validate:"required"`
-	DatastoreAccess string `mapstructure:"DATASTORE_ACCESS" validate:"required,oneof=bun sqlc"`
+	IdemKeyTimeout int    `mapstructure:"IDEM_KEY_TIMEOUT" validate:"required"`
+	DBSource       string `mapstructure:"DB_SOURCE"  validate:"required"`
+	ServerAddress  string `mapstructure:"SERVER_ADDRESS"  validate:"required"`
+	StripeKey      string `mapstructure:"STRIPE_KEY"  validate:"required"`
 }
 
 // LoadConfig reads configuration from file or environment variables.
@@ -39,7 +38,6 @@ func LoadConfig(cfgPath string) (config Config, err error) {
 
 	// default config values
 	viper.SetDefault("IDEM_KEY_TIMEOUT", 5)
-	viper.SetDefault("DATASTORE_ACCESS", "bun")
 
 	// enable loading of env vars values
 	// it'll override the values in the config file
