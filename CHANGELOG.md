@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.0.0](https://github.com/rafael-piovesan/go-rocket-ride/compare/v1.0.0...v2.0.0) (2022-05-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* simplifying datastore pkg
+* bumping version to v2
+* remove sqlc
+
+### Code Refactoring
+
+* bumping version to v2 ([ce2e66e](https://github.com/rafael-piovesan/go-rocket-ride/commit/ce2e66e690c744b92782911d1e34c560a6fddad4))
+* remove sqlc ([86f2094](https://github.com/rafael-piovesan/go-rocket-ride/commit/86f20944ab3105a1c4775a45df0a72e73ebcbbc8))
+* simplifying datastore pkg ([9b57e49](https://github.com/rafael-piovesan/go-rocket-ride/commit/9b57e49cf7fc37eb56c35c31a2c815470552cb63))
+
 ## 1.0.0 (2022-05-22)
 
 
