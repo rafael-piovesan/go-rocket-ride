@@ -1,0 +1,18 @@
+version: "3"
+
+tasks:
+  mock:
+    desc: Generate interfaces mocks
+    cmds:
+      - docker run --rm -it -v $(pwd):/src -w /src vektra/mockery --name Datastore
+      - docker run --rm -it -v $(pwd):/src -w /src vektra/mockery --name RideUseCase
+
+  integration:
+    desc: Run integration tests
+    cmds:
+      - go test -v -tags=integration ./...
+
+  unit:
+    desc: Run unit tests
+    cmds:
+      - go test -v -tags=unit ./...

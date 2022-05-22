@@ -1,0 +1,34 @@
+version: "3"
+
+includes:
+  db: ./taskfile_db.yml
+  test: ./taskfile_test.yml
+
+tasks:
+  deps:
+    desc: Install dependencies
+    cmds:
+      - go mod download
+      - go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+      - go install github.com/segmentio/golines@latest
+      - go install github.com/kyleconroy/sqlc/cmd/sqlc@latest
+      - go mod tidy
+
+  lint:
+    desc: Run linter
+    cmds:
+      - golangci-lint  run
+
+  format:
+    desc: Format source code
+    cmds:
+      - golines . -m 120 -w --ignore-generated
+
+  api:
+    desc: Run API server locally
+    cmds:
+      - go run cmd/api/main.go
+
+  default:
+    cmds:
+      - task -l

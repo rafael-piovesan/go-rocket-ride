@@ -51,11 +51,12 @@ Requirements:
 1. Stripe's [stripe-mock](https://github.com/stripe/stripe-mock) (also provided with the `docker-compose.yaml`)
 1. Docker is also needed for running the integration tests, since they rely on [testcontainers](https://github.com/testcontainers/testcontainers-go)
 1. This project makes use of `testfixtures` CLI to facilitate loading db fixtures, please take a look at how to install it [here](https://github.com/go-testfixtures/testfixtures#cli)
+1. Instead of a `Makefile`, this project uses `Taskfile`, please check its installation procedure [here](https://taskfile.dev/#/installation)
 1. Finally, run the following commands:
 
 ```sh
 # download and install both the project and dev dependencies
-make deps
+task deps
 
 # start the dependencies (postgres and stripe-mock)
 docker-compose up -d
@@ -82,18 +83,19 @@ curl -i -w '\n' -X POST http://localhost:8080/ \
 
 Use the provided `Makefile` to help you with dev & testing tasks:
 
-```sh
-help         # Show help
-deps         # Install dependencies
-migrate      # Run db migrations (expects $DSN env var, i.e., 'DSN=<postgres dsn> make migrate')
-fixtures     # Load db fixtures (expects $DSN env var, i.e., 'DSN=<postgres dsn> make fixtures')
-lint         # Run linter
-format       # Format source code
-sqlc         # Generate sqlc files
-mock         # Generate interfaces mocks
-integration  # Run integration tests
-unit         # Run unit tests
-server       # Run API server locally
+```log
+task: Available tasks for this project:
+* api:                  Run API server locally
+* db:fixtures:          Load DB fixtures (expects $DSN env var to be set)
+* db:migrate-drop:      Drop local DB (expects $DSN env var to be set)
+* db:migrate-up:        Up DB migrations (expects $DSN env var to be set)
+* db:sqlc:              Generate sqlc files
+* deps:                 Install dependencies
+* format:               Format source code
+* lint:                 Run linter
+* test:integration:     Run integration tests
+* test:mock:            Generate interfaces mocks
+* test:unit:            Run unit tests
 ```
 
 ## IDE

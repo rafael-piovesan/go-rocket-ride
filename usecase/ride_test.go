@@ -140,9 +140,9 @@ func TestGetIdempotencyKey(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, ik, res)
 		assert.Equal(t, idempotency.RecoveryPointStarted, ik.RecoveryPoint)
-		assert.True(t, time.Now().After(ik.LastRunAt))
+		assert.GreaterOrEqual(t, time.Now().UTC(), ik.LastRunAt)
 		if assert.NotNil(t, ik.LockedAt) {
-			assert.True(t, time.Now().After(*ik.LockedAt))
+			assert.GreaterOrEqual(t, time.Now().UTC(), *ik.LockedAt)
 		}
 		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
 		mockDS.AssertCalled(t, "CreateIdempotencyKey", ctx, ik)
