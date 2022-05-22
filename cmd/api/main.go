@@ -5,7 +5,7 @@ import (
 
 	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/api/http"
-	bunstore "github.com/rafael-piovesan/go-rocket-ride/v2/datastore/bun"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/stripemock"
 )
 
@@ -17,7 +17,7 @@ func main() {
 	}
 
 	// database connection
-	store, err := bunstore.NewStore(cfg.DBSource)
+	store, err := datastore.NewStore(cfg.DBSource)
 	if err != nil {
 		log.Fatalf("cannot open database: %v", err)
 	}

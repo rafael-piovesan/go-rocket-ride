@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-package bun
+package datastore
 
 import (
 	"context"
