@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/rafael-piovesan/go-rocket-ride/entity/audit"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/audit"
 )
 
 type AuditRecord struct {

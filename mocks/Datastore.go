@@ -5,10 +5,10 @@ package mocks
 import (
 	context "context"
 
-	entity "github.com/rafael-piovesan/go-rocket-ride/entity"
+	entity "github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	mock "github.com/stretchr/testify/mock"
 
-	rocketride "github.com/rafael-piovesan/go-rocket-ride"
+	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
 
 	testing "testing"
 )

@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-package sqlc
+package datastore
 
 import (
 	"context"
@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
-	"github.com/rafael-piovesan/go-rocket-ride/entity"
-	"github.com/rafael-piovesan/go-rocket-ride/entity/idempotency"
-	"github.com/rafael-piovesan/go-rocket-ride/pkg/migrate"
-	"github.com/rafael-piovesan/go-rocket-ride/pkg/testcontainer"
-	"github.com/rafael-piovesan/go-rocket-ride/pkg/testfixtures"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/idempotency"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testfixtures"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -101,8 +101,6 @@ func TestIdempotencyKey(t *testing.T) {
 		res, err := store.GetIdempotencyKey(ctx, idemKey, userID)
 		if assert.NoError(t, err) {
 			assert.Equal(t, ik, res)
-			t.Logf("ik %v", ik.ResponseBody)
-			t.Logf("res %v", res.ResponseBody)
 		}
 	})
 }

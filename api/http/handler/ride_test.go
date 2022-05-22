@@ -14,9 +14,9 @@ import (
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/labstack/echo/v4"
-	"github.com/rafael-piovesan/go-rocket-ride/entity"
-	"github.com/rafael-piovesan/go-rocket-ride/entity/idempotency"
-	"github.com/rafael-piovesan/go-rocket-ride/mocks"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/idempotency"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

@@ -3,7 +3,7 @@ package entity
 import (
 	"encoding/json"
 
-	"github.com/rafael-piovesan/go-rocket-ride/entity/stagedjob"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/stagedjob"
 )
 
 type StagedJob struct {

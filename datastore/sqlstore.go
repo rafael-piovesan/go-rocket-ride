@@ -1,4 +1,4 @@
-package bun
+package datastore
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	// loading bun's official Postgres driver.
 	_ "github.com/uptrace/bun/driver/pgdriver"
 
-	rocketride "github.com/rafael-piovesan/go-rocket-ride"
+	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
 )
 
 type sqlStore struct {

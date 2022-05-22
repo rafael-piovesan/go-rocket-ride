@@ -1,11 +1,11 @@
-package bun
+package datastore
 
 import (
 	"context"
 	"database/sql"
 	"errors"
 
-	"github.com/rafael-piovesan/go-rocket-ride/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 )
 
 func (s *sqlStore) CreateIdempotencyKey(

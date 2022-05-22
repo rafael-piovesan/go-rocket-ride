@@ -11,7 +11,6 @@ tasks:
       - go mod download
       - go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
       - go install github.com/segmentio/golines@latest
-      - go install github.com/kyleconroy/sqlc/cmd/sqlc@latest
       - go mod tidy
 
   lint:

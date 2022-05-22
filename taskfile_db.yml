@@ -28,8 +28,3 @@ tasks:
     deps: [check]
     cmds:
       - testfixtures -d postgres -c ${DSN} -D db/fixtures/local --dangerous-no-test-database-check
-
-  sqlc:
-    desc: Generate sqlc files
-    cmds:
-      - docker run --rm -it -v $(pwd):/src -w /src kjconroy/sqlc generate

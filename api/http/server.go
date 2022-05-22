@@ -12,10 +12,10 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
-	rocketride "github.com/rafael-piovesan/go-rocket-ride"
-	"github.com/rafael-piovesan/go-rocket-ride/api/http/handler"
-	cstmiddleware "github.com/rafael-piovesan/go-rocket-ride/api/http/middleware"
-	"github.com/rafael-piovesan/go-rocket-ride/usecase"
+	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/api/http/handler"
+	cstmiddleware "github.com/rafael-piovesan/go-rocket-ride/v2/api/http/middleware"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/usecase"
 )
 
 type Server struct {

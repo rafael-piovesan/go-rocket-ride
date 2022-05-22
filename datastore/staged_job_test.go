@@ -1,16 +1,16 @@
 //go:build integration
 // +build integration
 
-package sqlc
+package datastore
 
 import (
 	"context"
 	"testing"
 
-	"github.com/rafael-piovesan/go-rocket-ride/entity"
-	"github.com/rafael-piovesan/go-rocket-ride/entity/stagedjob"
-	"github.com/rafael-piovesan/go-rocket-ride/pkg/migrate"
-	"github.com/rafael-piovesan/go-rocket-ride/pkg/testcontainer"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/stagedjob"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
-	rocketride "github.com/rafael-piovesan/go-rocket-ride"
-	"github.com/rafael-piovesan/go-rocket-ride/entity"
+	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 )
 
 type userRequest struct {

@@ -3,7 +3,7 @@ package rocketride
 import (
 	"context"
 
-	"github.com/rafael-piovesan/go-rocket-ride/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 )
 
 type Datastore interface {
