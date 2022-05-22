@@ -12,12 +12,12 @@ import (
 	"github.com/stripe/stripe-go/v72"
 	"github.com/stripe/stripe-go/v72/charge"
 
-	rocketride "github.com/rafael-piovesan/go-rocket-ride"
-	"github.com/rafael-piovesan/go-rocket-ride/entity"
-	"github.com/rafael-piovesan/go-rocket-ride/entity/audit"
-	"github.com/rafael-piovesan/go-rocket-ride/entity/idempotency"
-	"github.com/rafael-piovesan/go-rocket-ride/entity/originip"
-	"github.com/rafael-piovesan/go-rocket-ride/entity/stagedjob"
+	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/audit"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/idempotency"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/originip"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/stagedjob"
 )
 
 type rideUseCase struct {

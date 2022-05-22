@@ -1,4 +1,4 @@
-module github.com/rafael-piovesan/go-rocket-ride
+module github.com/rafael-piovesan/go-rocket-ride/v2
 
 go 1.18
 

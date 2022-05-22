@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/rafael-piovesan/go-rocket-ride/entity/originip"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/originip"
 )
 
 type IPMiddleware struct{}

@@ -3,10 +3,10 @@ package main
 import (
 	"log"
 
-	rocketride "github.com/rafael-piovesan/go-rocket-ride"
-	"github.com/rafael-piovesan/go-rocket-ride/api/http"
-	bunstore "github.com/rafael-piovesan/go-rocket-ride/datastore/bun"
-	"github.com/rafael-piovesan/go-rocket-ride/pkg/stripemock"
+	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/api/http"
+	bunstore "github.com/rafael-piovesan/go-rocket-ride/v2/datastore/bun"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/stripemock"
 )
 
 func main() {

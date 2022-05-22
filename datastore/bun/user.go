@@ -6,7 +6,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/rafael-piovesan/go-rocket-ride/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 )
 
 func (s *sqlStore) GetUserByEmail(ctx context.Context, e string) (*entity.User, error) {

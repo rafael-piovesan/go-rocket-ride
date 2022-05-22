@@ -3,7 +3,7 @@ package bun
 import (
 	"context"
 
-	"github.com/rafael-piovesan/go-rocket-ride/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 )
 
 func (s *sqlStore) CreateAuditRecord(ctx context.Context, ar *entity.AuditRecord) (*entity.AuditRecord, error) {

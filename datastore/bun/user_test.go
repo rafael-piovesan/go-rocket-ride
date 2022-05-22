@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v6"
-	"github.com/rafael-piovesan/go-rocket-ride/entity"
-	"github.com/rafael-piovesan/go-rocket-ride/pkg/migrate"
-	"github.com/rafael-piovesan/go-rocket-ride/pkg/testcontainer"
-	"github.com/rafael-piovesan/go-rocket-ride/pkg/testfixtures"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testfixtures"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

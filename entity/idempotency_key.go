@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/rafael-piovesan/go-rocket-ride/entity/idempotency"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/idempotency"
 )
 
 type IdempotencyKey struct {
