@@ -24,8 +24,7 @@ Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#roc
 ├── cmd               # application commands
 │   └── api           # 'main.go' for running the API server
 ├── datastore         # app data stores (e.g., PostgreSQL, MySQL, etc.)
-│   ├── bun           # Postgres data access based on Bun ORM 
-│   └── sqlc          # Postgres data access based on Sqlc
+│   └── bun           # Postgres data access based on Bun ORM 
 ├── db                # database related files
 │   ├── fixtures      # fixtures used in integration tests and local development
 │   ├── migrations    # db migrations
@@ -36,8 +35,7 @@ Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#roc
 │   ├── migrate       # help with db migrations during integration tests
 │   ├── stripemock    # set Stripe's API SDK Backend to use stripe-mock
 │   ├── testcontainer # create db containers used in integration tests
-│   ├── testfixtures  # load db fixtures needed for integration tests
-│   └── tools         # keep track of dev deps
+│   └── testfixtures  # load db fixtures needed for integration tests
 ├── usecase           # application use cases
 ├── config.go         # handle config via env vars and .env files
 └── rocketride.go     # interface definitions
@@ -89,7 +87,6 @@ task: Available tasks for this project:
 * db:fixtures:          Load DB fixtures (expects $DSN env var to be set)
 * db:migrate-drop:      Drop local DB (expects $DSN env var to be set)
 * db:migrate-up:        Up DB migrations (expects $DSN env var to be set)
-* db:sqlc:              Generate sqlc files
 * deps:                 Install dependencies
 * format:               Format source code
 * lint:                 Run linter
