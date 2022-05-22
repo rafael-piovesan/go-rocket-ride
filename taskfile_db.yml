@@ -1,0 +1,35 @@
+version: "3"
+
+tasks:
+  check:
+    silent: true
+    cmds:
+      - |
+        if [ -z "$DSN" ]
+        then
+          echo "Database DSN env var is empty"
+          exit 1
+        fi
+
+  migrate-up:
+    desc: Up DB migrations (expects $DSN env var to be set)
+    deps: [check]
+    cmds:
+      - migrate -path db/migrations -database ${DSN} up
+
+  migrate-drop:
+    desc: Drop local DB (expects $DSN env var to be set)
+    deps: [check]
+    cmds:
+      - migrate -path db/migrations -database ${DSN} drop -f
+
+  fixtures:
+    desc: Load DB fixtures (expects $DSN env var to be set)
+    deps: [check]
+    cmds:
+      - testfixtures -d postgres -c ${DSN} -D db/fixtures/local --dangerous-no-test-database-check
+
+  sqlc:
+    desc: Generate sqlc files
+    cmds:
+      - docker run --rm -it -v $(pwd):/src -w /src kjconroy/sqlc generate
