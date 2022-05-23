@@ -2,42 +2,30 @@ package datastore
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
+	"github.com/uptrace/bun"
 )
 
-func (s *sqlStore) CreateRide(ctx context.Context, rd *entity.Ride) (*entity.Ride, error) {
-	_, err := s.db.NewInsert().
-		Model(rd).
-		Returning("*").
-		Exec(ctx)
-
-	return rd, err
+type Ride interface {
+	FindAll(context.Context, ...repo.SelectCriteria) ([]entity.Ride, error)
+	FindOne(context.Context, ...repo.SelectCriteria) (entity.Ride, error)
+	Delete(context.Context, *entity.Ride) error
+	Save(context.Context, *entity.Ride) error
+	Update(context.Context, *entity.Ride) error
 }
 
-func (s *sqlStore) GetRideByIdempotencyKeyID(ctx context.Context, keyID int64) (*entity.Ride, error) {
-	r := &entity.Ride{}
-	err := s.db.NewSelect().
-		Model(r).
-		Where("idempotency_key_id = ?", keyID).
-		Limit(1).
-		Scan(ctx)
+type rideStore struct {
+	*repo.CRUDRepository[entity.Ride]
+}
 
-	if errors.Is(err, sql.ErrNoRows) {
-		return r, entity.ErrNotFound
+func NewRide(db bun.IDB) Ride {
+	return rideStore{&repo.CRUDRepository[entity.Ride]{DB: db}}
+}
+
+func RideWithIdemKeyID(kid int64) repo.SelectCriteria {
+	return func(q *bun.SelectQuery) *bun.SelectQuery {
+		return q.Where("idempotency_key_id = ?", kid)
 	}
-
-	return r, err
-}
-
-func (s *sqlStore) UpdateRide(ctx context.Context, rd *entity.Ride) (*entity.Ride, error) {
-	_, err := s.db.NewUpdate().
-		Model(rd).
-		WherePK().
-		Returning("*").
-		Exec(ctx)
-
-	return rd, err
 }

@@ -4,13 +4,22 @@ import (
 	"context"
 
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
+	"github.com/uptrace/bun"
 )
 
-func (s *sqlStore) CreateStagedJob(ctx context.Context, sj *entity.StagedJob) (*entity.StagedJob, error) {
-	_, err := s.db.NewInsert().
-		Model(sj).
-		Returning("*").
-		Exec(ctx)
+type StagedJob interface {
+	FindAll(context.Context, ...repo.SelectCriteria) ([]entity.StagedJob, error)
+	FindOne(context.Context, ...repo.SelectCriteria) (entity.StagedJob, error)
+	Delete(context.Context, *entity.StagedJob) error
+	Save(context.Context, *entity.StagedJob) error
+	Update(context.Context, *entity.StagedJob) error
+}
 
-	return sj, err
+type stagedJobStore struct {
+	*repo.CRUDRepository[entity.StagedJob]
+}
+
+func NewStagedJob(db bun.IDB) StagedJob {
+	return stagedJobStore{&repo.CRUDRepository[entity.StagedJob]{DB: db}}
 }

@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
-	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/idempotency"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/originip"
-	"github.com/rafael-piovesan/go-rocket-ride/v2/mocks"
+	mocks "github.com/rafael-piovesan/go-rocket-ride/v2/mocks/datastore"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -26,6 +28,15 @@ import (
 const (
 	stripeURL = "http://stripeapi"
 )
+
+type testMocks struct {
+	store   *mocks.Store
+	idemKey *mocks.IdempotencyKey
+	ride    *mocks.Ride
+	audit   *mocks.AuditRecord
+	user    *mocks.User
+	job     *mocks.StagedJob
+}
 
 func init() {
 	maxRetries := int64(0)
@@ -41,29 +52,54 @@ func init() {
 	stripe.SetBackend(stripe.UploadsBackend, stripeMockBackend)
 }
 
-func TestGetIdempotencyKey(t *testing.T) {
-	ctx := context.Background()
+func getMocks() testMocks {
+	return getMocksWithTimes(1)
+}
 
-	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
-	mockDS := &mocks.Datastore{}
+func getMocksWithTimes(n int) testMocks {
+	m := testMocks{
+		store:   &mocks.Store{},
+		idemKey: &mocks.IdempotencyKey{},
+		ride:    &mocks.Ride{},
+		audit:   &mocks.AuditRecord{},
+		user:    &mocks.User{},
+		job:     &mocks.StagedJob{},
+	}
+
+	mockAS := &mocks.AtomicStore{}
+	mockAS.On("AuditRecords").Return(m.audit)
+	mockAS.On("IdempotencyKeys").Return(m.idemKey)
+	mockAS.On("Rides").Return(m.ride)
+	mockAS.On("StagedJobs").Return(m.job)
+	mockAS.On("Users").Return(m.user)
 
 	var mockAtomic *mock.Call
-	mockAtomic = mockDS.On("Atomic", mock.Anything, mock.Anything).
+	mockAtomic = m.store.On("Atomic", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
-			fn, ok := args.Get(1).(func(rocketride.Datastore) error)
+			fn, ok := args.Get(1).(datastore.AtomicBlock)
 			if !ok {
 				panic("argument mismatch")
 			}
 
 			// Call the actual func argument 'fn' passed in to
-			// 'Atomic(context.Context, func(rocketride.Datastore) error) error'
+			// 'Atomic(context.Context, datastore.AtomicBlock) error'
 			// as expected from its second parameter and, while doing so, inject the
 			// mocked Datastore instance 'mockDS' so we're able to test the other calls
 			// made to it inside the 'Atomic' block.
-			mockAtomic.Return(fn(mockDS))
+			mockAtomic.Return(fn(mockAS))
 		})
 
-	uc := rideUseCase{cfg: mockCfg, store: mockDS}
+	if n >= 0 {
+		mockAtomic.Times(n)
+	}
+
+	return m
+}
+
+func TestGetIdempotencyKey(t *testing.T) {
+	ctx := context.Background()
+
+	mockCfg := config.Config{IdemKeyTimeout: 5}
 
 	gofakeit.Seed(time.Now().UnixNano())
 	jsonRide, err := json.Marshal(entity.Ride{
@@ -77,75 +113,83 @@ func TestGetIdempotencyKey(t *testing.T) {
 	t.Run("Error on GetIdempotencyKey", func(t *testing.T) {
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 		}
 
 		retErr := errors.New("err GetIdempotencyKey")
 
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
-			Once().
-			Return(nil, retErr)
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		_, err := uc.getIdempotencyKey(ctx, ik)
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
+			Once().
+			Return(entity.IdempotencyKey{}, retErr)
+
+		_, err := uc.getIdempotencyKey(ctx, &ik)
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
 	})
 
 	t.Run("Error on CreateIdempotencyKey", func(t *testing.T) {
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 		}
 
 		retErr := errors.New("err CreateIdempotencyKey")
 
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
-			Once().
-			Return(nil, entity.ErrNotFound)
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		mockDS.On("CreateIdempotencyKey", ctx, ik).
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
-			Return(nil, retErr)
+			Return(entity.IdempotencyKey{}, repo.ErrRecordNotFound)
 
-		_, err := uc.getIdempotencyKey(ctx, ik)
+		m.idemKey.On("Save", ctx, &ik).
+			Once().
+			Return(retErr)
+
+		_, err := uc.getIdempotencyKey(ctx, &ik)
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
-		mockDS.AssertCalled(t, "CreateIdempotencyKey", ctx, ik)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Save", 1)
 	})
 
 	t.Run("Success on CreateIdempotencyKey", func(t *testing.T) {
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 		}
 
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
-			Once().
-			Return(nil, entity.ErrNotFound)
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		mockDS.On("CreateIdempotencyKey", ctx, ik).
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
-			Return(ik, nil)
+			Return(entity.IdempotencyKey{}, repo.ErrRecordNotFound)
 
-		res, err := uc.getIdempotencyKey(ctx, ik)
+		m.idemKey.On("Save", ctx, &ik).
+			Once().
+			Return(nil)
+
+		idk, err := uc.getIdempotencyKey(ctx, &ik)
 
 		assert.NoError(t, err)
-		assert.Equal(t, ik, res)
-		assert.Equal(t, idempotency.RecoveryPointStarted, ik.RecoveryPoint)
-		assert.GreaterOrEqual(t, time.Now().UTC(), ik.LastRunAt)
-		if assert.NotNil(t, ik.LockedAt) {
-			assert.GreaterOrEqual(t, time.Now().UTC(), *ik.LockedAt)
+		assert.Equal(t, idempotency.RecoveryPointStarted, idk.RecoveryPoint)
+		assert.GreaterOrEqual(t, time.Now().UTC(), idk.LastRunAt)
+		if assert.NotNil(t, idk.LockedAt) {
+			assert.GreaterOrEqual(t, time.Now().UTC(), *idk.LockedAt)
 		}
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
-		mockDS.AssertCalled(t, "CreateIdempotencyKey", ctx, ik)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Save", 1)
 	})
 
 	t.Run("Request parameters mismatch", func(t *testing.T) {
@@ -160,53 +204,59 @@ func TestGetIdempotencyKey(t *testing.T) {
 
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide,
 		}
 
-		retIK := &entity.IdempotencyKey{
+		retIK := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide2,
 		}
 
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
 			Return(retIK, nil)
 
-		_, err = uc.getIdempotencyKey(ctx, ik)
+		_, err = uc.getIdempotencyKey(ctx, &ik)
 
 		assert.Equal(t, entity.ErrIdemKeyParamsMismatch, err)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
 	})
 
 	t.Run("Request in progress", func(t *testing.T) {
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide,
 		}
 
 		now := time.Now().UTC()
-		retIK := &entity.IdempotencyKey{
+		retIK := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide,
 			LockedAt:       &now,
 		}
 
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
 			Return(retIK, nil)
 
-		_, err := uc.getIdempotencyKey(ctx, ik)
+		_, err := uc.getIdempotencyKey(ctx, &ik)
 
 		assert.Equal(t, entity.ErrIdemKeyRequestInProgress, err)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
 	})
 
 	t.Run("Error on UpdateIdempotencyKey", func(t *testing.T) {
@@ -221,7 +271,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide,
@@ -230,19 +280,22 @@ func TestGetIdempotencyKey(t *testing.T) {
 
 		retErr := errors.New("err UpdateIdempotencyKey")
 
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
 			Return(ik, nil)
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.idemKey.On("Update", ctx, mock.Anything).
 			Once().
-			Return(nil, retErr)
+			Return(retErr)
 
-		_, err := uc.getIdempotencyKey(ctx, ik)
+		_, err := uc.getIdempotencyKey(ctx, &ik)
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 
 	t.Run("Success on UpdateIdempotencyKey", func(t *testing.T) {
@@ -257,48 +310,52 @@ func TestGetIdempotencyKey(t *testing.T) {
 
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide,
 			RecoveryPoint:  rps[ix],
 		}
 
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
 			Return(ik, nil)
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.idemKey.On("Update", ctx, mock.Anything).
 			Once().
-			Return(ik, nil)
+			Return(nil)
 
-		res, err := uc.getIdempotencyKey(ctx, ik)
+		_, err := uc.getIdempotencyKey(ctx, &ik)
 
 		assert.NoError(t, err)
-		assert.Equal(t, ik, res)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 
 	t.Run("No-op on RecoveryPointFinished", func(t *testing.T) {
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide,
 			RecoveryPoint:  idempotency.RecoveryPointFinished,
 		}
 
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
 			Return(ik, nil)
 
-		res, err := uc.getIdempotencyKey(ctx, ik)
+		_, err := uc.getIdempotencyKey(ctx, &ik)
 
 		assert.NoError(t, err)
-		assert.Equal(t, ik, res)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
 	})
 }
 
@@ -306,26 +363,13 @@ func TestCreateRide(t *testing.T) {
 	oip := &originip.OriginIP{IP: gofakeit.IPv4Address()}
 	ctx := originip.NewContext(context.Background(), oip)
 
-	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
-	mockDS := &mocks.Datastore{}
-
-	var mockAtomic *mock.Call
-	mockAtomic = mockDS.On("Atomic", mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
-			fn, ok := args.Get(1).(func(rocketride.Datastore) error)
-			if !ok {
-				panic("argument mismatch")
-			}
-			mockAtomic.Return(fn(mockDS))
-		})
-
-	uc := rideUseCase{cfg: mockCfg, store: mockDS}
+	mockCfg := config.Config{IdemKeyTimeout: 5}
 
 	t.Run("Error on CreateRide", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         userID,
@@ -335,21 +379,24 @@ func TestCreateRide(t *testing.T) {
 
 		retErr := errors.New("err CreateRide")
 
-		mockDS.On("CreateRide", ctx, rd).
-			Once().
-			Return(nil, retErr)
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		_, err := uc.createRide(ctx, ik, rd)
+		m.ride.On("Save", ctx, rd).
+			Once().
+			Return(retErr)
+
+		err := uc.createRide(ctx, &ik, rd)
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "CreateRide", ctx, rd)
+		m.ride.AssertNumberOfCalls(t, "Save", 1)
 	})
 
 	t.Run("Error on CreateAuditRecord", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         userID,
@@ -359,26 +406,29 @@ func TestCreateRide(t *testing.T) {
 
 		retErr := errors.New("err CreateAuditRecord")
 
-		mockDS.On("CreateRide", ctx, rd).
-			Once().
-			Return(rd, nil)
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		mockDS.On("CreateAuditRecord", ctx, mock.AnythingOfType("*entity.AuditRecord")).
+		m.ride.On("Save", ctx, rd).
 			Once().
-			Return(nil, retErr)
+			Return(nil)
 
-		_, err := uc.createRide(ctx, ik, rd)
+		m.audit.On("Save", ctx, mock.AnythingOfType("*entity.AuditRecord")).
+			Once().
+			Return(retErr)
+
+		err := uc.createRide(ctx, &ik, rd)
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "CreateRide", ctx, rd)
-		mockDS.AssertCalled(t, "CreateAuditRecord", ctx, mock.AnythingOfType("*entity.AuditRecord"))
+		m.ride.AssertNumberOfCalls(t, "Save", 1)
+		m.audit.AssertNumberOfCalls(t, "Save", 1)
 	})
 
 	t.Run("Error on UpdateIdempotencyKey", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         userID,
@@ -388,31 +438,34 @@ func TestCreateRide(t *testing.T) {
 
 		retErr := errors.New("err UpdateIdempotencyKey")
 
-		mockDS.On("CreateRide", ctx, rd).
-			Once().
-			Return(rd, nil)
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		mockDS.On("CreateAuditRecord", ctx, mock.AnythingOfType("*entity.AuditRecord")).
+		m.ride.On("Save", ctx, rd).
 			Once().
-			Return(&entity.AuditRecord{}, nil)
+			Return(nil)
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.audit.On("Save", ctx, mock.AnythingOfType("*entity.AuditRecord")).
 			Once().
-			Return(nil, retErr)
+			Return(nil)
 
-		_, err := uc.createRide(ctx, ik, rd)
+		m.idemKey.On("Update", ctx, &ik).
+			Once().
+			Return(retErr)
+
+		err := uc.createRide(ctx, &ik, rd)
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "CreateRide", ctx, rd)
-		mockDS.AssertCalled(t, "CreateAuditRecord", ctx, mock.AnythingOfType("*entity.AuditRecord"))
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.ride.AssertNumberOfCalls(t, "Save", 1)
+		m.audit.AssertNumberOfCalls(t, "Save", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 
 	t.Run("Success on createRide", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         userID,
@@ -420,26 +473,28 @@ func TestCreateRide(t *testing.T) {
 
 		rd := &entity.Ride{}
 
-		mockDS.On("CreateRide", ctx, rd).
-			Once().
-			Return(rd, nil)
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		mockDS.On("CreateAuditRecord", ctx, mock.AnythingOfType("*entity.AuditRecord")).
+		m.ride.On("Save", ctx, rd).
 			Once().
-			Return(&entity.AuditRecord{}, nil)
+			Return(nil)
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.audit.On("Save", ctx, mock.AnythingOfType("*entity.AuditRecord")).
 			Once().
-			Return(ik, nil)
+			Return(nil)
 
-		resRd, err := uc.createRide(ctx, ik, rd)
+		m.idemKey.On("Update", ctx, &ik).
+			Once().
+			Return(nil)
+
+		err := uc.createRide(ctx, &ik, rd)
 
 		assert.NoError(t, err)
-		assert.Equal(t, rd, resRd)
 		assert.Equal(t, idempotency.RecoveryPointCreated, ik.RecoveryPoint)
-		mockDS.AssertCalled(t, "CreateRide", ctx, rd)
-		mockDS.AssertCalled(t, "CreateAuditRecord", ctx, mock.AnythingOfType("*entity.AuditRecord"))
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.ride.AssertNumberOfCalls(t, "Save", 1)
+		m.audit.AssertNumberOfCalls(t, "Save", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 }
 
@@ -447,26 +502,13 @@ func TestCreateCharge(t *testing.T) {
 	defer gock.Off()
 	ctx := context.Background()
 
-	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
-	mockDS := &mocks.Datastore{}
-
-	var mockAtomic *mock.Call
-	mockAtomic = mockDS.On("Atomic", mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
-			fn, ok := args.Get(1).(func(rocketride.Datastore) error)
-			if !ok {
-				panic("argument mismatch")
-			}
-			mockAtomic.Return(fn(mockDS))
-		})
-
-	uc := rideUseCase{cfg: mockCfg, store: mockDS}
+	mockCfg := config.Config{IdemKeyTimeout: 5}
 
 	t.Run("Error on GetRideByIdempotencyKeyID", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         userID,
@@ -474,14 +516,17 @@ func TestCreateCharge(t *testing.T) {
 
 		retErr := errors.New("err GetRideByIdempotencyKeyID")
 
-		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
-			Once().
-			Return(nil, retErr)
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		err := uc.createCharge(ctx, ik, nil)
+		m.ride.On("FindOne", ctx, mock.Anything).
+			Once().
+			Return(entity.Ride{}, retErr)
+
+		err := uc.createCharge(ctx, &ik, nil)
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
+		m.ride.AssertNumberOfCalls(t, "FindOne", 1)
 	})
 
 	t.Run("Stripe card error", func(t *testing.T) {
@@ -492,18 +537,19 @@ func TestCreateCharge(t *testing.T) {
 			Email:            gofakeit.Email(),
 			StripeCustomerID: gofakeit.UUID(),
 		}
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         user.ID,
 			User:           user,
 		}
 
-		rd := &entity.Ride{}
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
+		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
-			Return(rd, nil)
+			Return(entity.Ride{}, nil)
 
 		gock.New(stripeURL).
 			Post("/v1/charges").
@@ -516,15 +562,15 @@ func TestCreateCharge(t *testing.T) {
 				}
 			}`)
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.idemKey.On("Update", ctx, &ik).
 			Once().
-			Return(ik, nil)
+			Return(nil)
 
-		err := uc.createCharge(ctx, ik, nil)
+		err := uc.createCharge(ctx, &ik, nil)
 
 		assert.Equal(t, entity.ErrPaymentProvider, err)
-		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.ride.AssertNumberOfCalls(t, "FindOne", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 
 	t.Run("Stripe generic error", func(t *testing.T) {
@@ -535,18 +581,19 @@ func TestCreateCharge(t *testing.T) {
 			Email:            gofakeit.Email(),
 			StripeCustomerID: gofakeit.UUID(),
 		}
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         user.ID,
 			User:           user,
 		}
 
-		rd := &entity.Ride{}
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
+		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
-			Return(rd, nil)
+			Return(entity.Ride{}, nil)
 
 		gock.New(stripeURL).
 			Post("/v1/charges").
@@ -558,15 +605,15 @@ func TestCreateCharge(t *testing.T) {
 				}
 			}`)
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.idemKey.On("Update", ctx, &ik).
 			Once().
-			Return(ik, nil)
+			Return(nil)
 
-		err := uc.createCharge(ctx, ik, nil)
+		err := uc.createCharge(ctx, &ik, nil)
 
 		assert.Equal(t, entity.ErrPaymentProviderGeneric, err)
-		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.ride.AssertNumberOfCalls(t, "FindOne", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 
 	t.Run("Stripe unknown error", func(t *testing.T) {
@@ -577,27 +624,28 @@ func TestCreateCharge(t *testing.T) {
 			Email:            gofakeit.Email(),
 			StripeCustomerID: gofakeit.UUID(),
 		}
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         user.ID,
 			User:           user,
 		}
 
-		rd := &entity.Ride{}
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
+		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
-			Return(rd, nil)
+			Return(entity.Ride{}, nil)
 
 		gock.New(stripeURL).
 			Post("/v1/charges").
 			ReplyError(errors.New("unknown error"))
 
-		err := uc.createCharge(ctx, ik, nil)
+		err := uc.createCharge(ctx, &ik, nil)
 
 		assert.Error(t, err)
-		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
+		m.ride.AssertNumberOfCalls(t, "FindOne", 1)
 	})
 
 	t.Run("Error on UpdateRide", func(t *testing.T) {
@@ -608,18 +656,21 @@ func TestCreateCharge(t *testing.T) {
 			Email:            gofakeit.Email(),
 			StripeCustomerID: gofakeit.UUID(),
 		}
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         user.ID,
 			User:           user,
 		}
 
-		rd := &entity.Ride{}
+		rd := entity.Ride{StripeChargeID: new(string)}
 
 		retErr := errors.New("err UpdateRide")
 
-		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+
+		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
 			Return(rd, nil)
 
@@ -628,15 +679,15 @@ func TestCreateCharge(t *testing.T) {
 			Reply(200).
 			JSON(map[string]string{"foo": "bar"})
 
-		mockDS.On("UpdateRide", ctx, rd).
+		m.ride.On("Update", ctx, &rd).
 			Once().
-			Return(nil, retErr)
+			Return(retErr)
 
-		err := uc.createCharge(ctx, ik, nil)
+		err := uc.createCharge(ctx, &ik, nil)
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
-		mockDS.AssertCalled(t, "UpdateRide", ctx, rd)
+		m.ride.AssertNumberOfCalls(t, "FindOne", 1)
+		m.ride.AssertNumberOfCalls(t, "Update", 1)
 	})
 
 	t.Run("Error on UpdateIdempotencyKey", func(t *testing.T) {
@@ -647,18 +698,21 @@ func TestCreateCharge(t *testing.T) {
 			Email:            gofakeit.Email(),
 			StripeCustomerID: gofakeit.UUID(),
 		}
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         user.ID,
 			User:           user,
 		}
 
-		rd := &entity.Ride{}
+		rd := entity.Ride{StripeChargeID: new(string)}
 
 		retErr := errors.New("err UpdateIdempotencyKey")
 
-		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+
+		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
 			Return(rd, nil)
 
@@ -667,20 +721,20 @@ func TestCreateCharge(t *testing.T) {
 			Reply(200).
 			JSON(map[string]string{"foo": "bar"})
 
-		mockDS.On("UpdateRide", ctx, rd).
+		m.ride.On("Update", ctx, &rd).
 			Once().
-			Return(rd, nil)
+			Return(nil)
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.idemKey.On("Update", ctx, &ik).
 			Once().
-			Return(nil, retErr)
+			Return(retErr)
 
-		err := uc.createCharge(ctx, ik, nil)
+		err := uc.createCharge(ctx, &ik, nil)
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
-		mockDS.AssertCalled(t, "UpdateRide", ctx, rd)
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.ride.AssertNumberOfCalls(t, "FindOne", 1)
+		m.ride.AssertNumberOfCalls(t, "Update", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 
 	t.Run("Success on createCharge", func(t *testing.T) {
@@ -691,16 +745,19 @@ func TestCreateCharge(t *testing.T) {
 			Email:            gofakeit.Email(),
 			StripeCustomerID: gofakeit.UUID(),
 		}
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         user.ID,
 			User:           user,
 		}
 
-		rd := &entity.Ride{}
+		rd := entity.Ride{StripeChargeID: new(string)}
 
-		mockDS.On("GetRideByIdempotencyKeyID", ctx, keyID).
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+
+		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
 			Return(rd, nil)
 
@@ -709,143 +766,140 @@ func TestCreateCharge(t *testing.T) {
 			Reply(200).
 			JSON(map[string]string{"foo": "bar"})
 
-		mockDS.On("UpdateRide", ctx, rd).
+		m.ride.On("Update", ctx, &rd).
 			Once().
-			Return(rd, nil)
+			Return(nil)
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.idemKey.On("Update", ctx, &ik).
 			Once().
-			Return(ik, nil)
+			Return(nil)
 
-		err := uc.createCharge(ctx, ik, nil)
+		err := uc.createCharge(ctx, &ik, nil)
 
 		assert.NoError(t, err)
 		assert.Equal(t, idempotency.RecoveryPointCharged, ik.RecoveryPoint)
-		mockDS.AssertCalled(t, "GetRideByIdempotencyKeyID", ctx, keyID)
-		mockDS.AssertCalled(t, "UpdateRide", ctx, rd)
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.ride.AssertNumberOfCalls(t, "FindOne", 1)
+		m.ride.AssertNumberOfCalls(t, "Update", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 }
 
 func TestSendReceipt(t *testing.T) {
 	ctx := context.Background()
 
-	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
-	mockDS := &mocks.Datastore{}
-
-	var mockAtomic *mock.Call
-	mockAtomic = mockDS.On("Atomic", mock.Anything, mock.Anything).
-		Run(func(args mock.Arguments) {
-			fn, ok := args.Get(1).(func(rocketride.Datastore) error)
-			if !ok {
-				panic("argument mismatch")
-			}
-			mockAtomic.Return(fn(mockDS))
-		})
-
-	uc := rideUseCase{cfg: mockCfg, store: mockDS}
+	mockCfg := config.Config{IdemKeyTimeout: 5}
 
 	t.Run("Error on CreateStagedJob", func(t *testing.T) {
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			UserID: userID,
 		}
 
 		retErr := errors.New("err CreateStagedJob")
 
-		mockDS.On("CreateStagedJob", ctx, mock.AnythingOfType("*entity.StagedJob")).
-			Once().
-			Return(nil, retErr)
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		err := uc.sendReceipt(ctx, ik)
+		m.job.On("Save", ctx, mock.AnythingOfType("*entity.StagedJob")).
+			Once().
+			Return(retErr)
+
+		err := uc.sendReceipt(ctx, &ik)
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "CreateStagedJob", ctx, mock.AnythingOfType("*entity.StagedJob"))
+		m.job.AssertNumberOfCalls(t, "Save", 1)
 	})
 
 	t.Run("Error on UpdateIdempotencyKey", func(t *testing.T) {
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			UserID: userID,
 		}
 
 		retErr := errors.New("err UpdateIdempotencyKey")
 
-		mockDS.On("CreateStagedJob", ctx, mock.AnythingOfType("*entity.StagedJob")).
-			Once().
-			Return(&entity.StagedJob{}, nil)
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.job.On("Save", ctx, mock.AnythingOfType("*entity.StagedJob")).
 			Once().
-			Return(nil, retErr)
+			Return(nil)
 
-		err := uc.sendReceipt(ctx, ik)
+		m.idemKey.On("Update", ctx, &ik).
+			Once().
+			Return(retErr)
+
+		err := uc.sendReceipt(ctx, &ik)
 
 		assert.Error(t, retErr, err)
-		mockDS.AssertCalled(t, "CreateStagedJob", ctx, mock.AnythingOfType("*entity.StagedJob"))
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.job.AssertNumberOfCalls(t, "Save", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 
 	t.Run("Success on CreateStagedJob", func(t *testing.T) {
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			UserID: userID,
 		}
 
-		sj := &entity.StagedJob{}
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		mockDS.On("CreateStagedJob", ctx, mock.AnythingOfType("*entity.StagedJob")).
+		m.job.On("Save", ctx, mock.AnythingOfType("*entity.StagedJob")).
 			Once().
-			Return(sj, nil)
+			Return(nil)
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.idemKey.On("Update", ctx, &ik).
 			Once().
-			Return(ik, nil)
+			Return(nil)
 
-		err := uc.sendReceipt(ctx, ik)
+		err := uc.sendReceipt(ctx, &ik)
 
 		assert.NoError(t, err)
 		assert.Equal(t, idempotency.RecoveryPointFinished, ik.RecoveryPoint)
 		assert.Nil(t, ik.LockedAt)
 		assert.Equal(t, idempotency.ResponseCodeOK, *ik.ResponseCode)
 		assert.Equal(t, idempotency.ResponseBody{Message: "OK"}, *ik.ResponseBody)
-		mockDS.AssertCalled(t, "CreateStagedJob", ctx, mock.AnythingOfType("*entity.StagedJob"))
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.job.AssertNumberOfCalls(t, "Save", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 }
 
 func TestUnlockIdempotencyKey(t *testing.T) {
 	ctx := context.Background()
 
-	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
-	mockDS := &mocks.Datastore{}
-
-	uc := rideUseCase{cfg: mockCfg, store: mockDS}
+	mockCfg := config.Config{IdemKeyTimeout: 5}
 
 	t.Run("Error on UpdateIdempotencyKey", func(t *testing.T) {
-		ik := &entity.IdempotencyKey{}
+		ik := entity.IdempotencyKey{}
 
 		retErr := errors.New("err UpdateIdempotencyKey")
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+
+		m.idemKey.On("Update", ctx, &ik).
 			Once().
-			Return(nil, retErr)
+			Return(retErr)
 
-		uc.unlockIdempotencyKey(ctx, ik)
+		uc.unlockIdempotencyKey(ctx, &ik)
 
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 
 	t.Run("Success on UpdateIdempotencyKey", func(t *testing.T) {
-		ik := &entity.IdempotencyKey{}
+		ik := entity.IdempotencyKey{}
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+
+		m.idemKey.On("Update", ctx, &ik).
 			Once().
-			Return(ik, nil)
+			Return(nil)
 
-		uc.unlockIdempotencyKey(ctx, ik)
+		uc.unlockIdempotencyKey(ctx, &ik)
 
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 }
 
@@ -853,13 +907,7 @@ func TestCreate(t *testing.T) {
 	defer gock.Off()
 	ctx := context.Background()
 
-	mockCfg := rocketride.Config{IdemKeyTimeout: 5}
-	mockDS := &mocks.Datastore{}
-
-	uc := rideUseCase{
-		cfg:   mockCfg,
-		store: mockDS,
-	}
+	mockCfg := config.Config{IdemKeyTimeout: 5}
 
 	jsonRide, err := json.Marshal(entity.Ride{
 		OriginLat: gofakeit.Float64(),
@@ -872,97 +920,77 @@ func TestCreate(t *testing.T) {
 	t.Run("Error on createRide", func(t *testing.T) {
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide,
 			RecoveryPoint:  idempotency.RecoveryPointStarted,
 		}
 
-		rd := &entity.Ride{}
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		var mockAtomic *mock.Call
-		mockAtomic = mockDS.On("Atomic", mock.Anything, mock.Anything).
-			Once().
-			Run(func(args mock.Arguments) {
-				fn, ok := args.Get(1).(func(rocketride.Datastore) error)
-				if !ok {
-					panic("argument mismatch")
-				}
-				mockAtomic.Return(fn(mockDS))
-			})
-
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.idemKey.On("Update", ctx, mock.AnythingOfType("*entity.IdempotencyKey")).
 			Twice().
-			Return(ik, nil)
+			Return(nil)
 
 		// Get Idempotency Key
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
 			Return(ik, nil)
 
 		// Create Ride
 		retErr := errors.New("error createRide")
-		mockDS.On("Atomic", mock.Anything, mock.Anything).
+		m.store.On("Atomic", mock.Anything, mock.Anything).
 			Once().
 			Return(retErr)
 
-		_, err := uc.Create(ctx, ik, rd)
+		err := uc.Create(ctx, &ik, &entity.Ride{})
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 2)
 	})
 
 	t.Run("Error on createCharge", func(t *testing.T) {
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide,
 			RecoveryPoint:  idempotency.RecoveryPointCreated,
 		}
 
-		rd := &entity.Ride{}
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		var mockAtomic *mock.Call
-		mockAtomic = mockDS.On("Atomic", mock.Anything, mock.Anything).
-			Once().
-			Run(func(args mock.Arguments) {
-				fn, ok := args.Get(1).(func(rocketride.Datastore) error)
-				if !ok {
-					panic("argument mismatch")
-				}
-				mockAtomic.Return(fn(mockDS))
-			})
-
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.idemKey.On("Update", ctx, mock.AnythingOfType("*entity.IdempotencyKey")).
 			Twice().
-			Return(ik, nil)
+			Return(nil)
 
 		// Get Idempotency Key
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
 			Return(ik, nil)
 
 		// Create Charge
 		retErr := errors.New("error createCharge")
-		mockDS.On("Atomic", mock.Anything, mock.Anything).
+		m.store.On("Atomic", mock.Anything, mock.Anything).
 			Once().
 			Return(retErr)
 
-		_, err := uc.Create(ctx, ik, rd)
+		err := uc.Create(ctx, &ik, &entity.Ride{})
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
 	})
 
 	t.Run("Error on sendReceipt", func(t *testing.T) {
 		key := gofakeit.UUID()
 		keyID := int64(gofakeit.Number(1, 1000))
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         userID,
@@ -970,109 +998,80 @@ func TestCreate(t *testing.T) {
 			RecoveryPoint:  idempotency.RecoveryPointCharged,
 		}
 
-		rd := &entity.Ride{}
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		var mockAtomic *mock.Call
-		mockAtomic = mockDS.On("Atomic", mock.Anything, mock.Anything).
-			Once().
-			Run(func(args mock.Arguments) {
-				fn, ok := args.Get(1).(func(rocketride.Datastore) error)
-				if !ok {
-					panic("argument mismatch")
-				}
-				mockAtomic.Return(fn(mockDS))
-			})
-
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.idemKey.On("Update", ctx, mock.AnythingOfType("*entity.IdempotencyKey")).
 			Twice().
-			Return(ik, nil)
+			Return(nil)
 
 		// Get Idempotency Key
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
 			Return(ik, nil)
 
 		// Send Receipt
 		retErr := errors.New("error sendReceipt")
-		mockDS.On("Atomic", mock.Anything, mock.Anything).
+		m.store.On("Atomic", mock.Anything, mock.Anything).
 			Once().
 			Return(retErr)
 
-		_, err := uc.Create(ctx, ik, rd)
+		err := uc.Create(ctx, &ik, &entity.Ride{})
 
 		assert.Equal(t, retErr, err)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
 	})
 
 	t.Run("No-op on finished recovery point", func(t *testing.T) {
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide,
 			RecoveryPoint:  idempotency.RecoveryPointFinished,
 		}
 
-		rd := &entity.Ride{}
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		var mockAtomic *mock.Call
-		mockAtomic = mockDS.On("Atomic", mock.Anything, mock.Anything).
-			Run(func(args mock.Arguments) {
-				fn, ok := args.Get(1).(func(rocketride.Datastore) error)
-				if !ok {
-					panic("argument mismatch")
-				}
-				mockAtomic.Return(fn(mockDS))
-			})
-
-		// Get Idempotency Key with Recovery Point Finished
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
+		// Get Idempotency Key
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
 			Return(ik, nil)
 
-		res, err := uc.Create(ctx, ik, rd)
+		err := uc.Create(ctx, &ik, &entity.Ride{})
 
 		assert.NoError(t, err)
-		assert.Equal(t, ik, res)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
 	})
 
 	t.Run("Error on unknown recovery point", func(t *testing.T) {
 		key := gofakeit.UUID()
 		userID := int64(gofakeit.Number(1, 1000))
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			IdempotencyKey: key,
 			UserID:         userID,
 			RequestParams:  jsonRide,
 			RecoveryPoint:  "unknown",
 		}
 
-		rd := &entity.Ride{}
+		m := getMocks()
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
 
-		var mockAtomic *mock.Call
-		mockAtomic = mockDS.On("Atomic", mock.Anything, mock.Anything).
-			Run(func(args mock.Arguments) {
-				fn, ok := args.Get(1).(func(rocketride.Datastore) error)
-				if !ok {
-					panic("argument mismatch")
-				}
-				mockAtomic.Return(fn(mockDS))
-			})
-
-		mockDS.On("GetIdempotencyKey", ctx, key, userID).
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
 			Return(ik, nil)
 
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
+		m.idemKey.On("Update", ctx, mock.AnythingOfType("*entity.IdempotencyKey")).
 			Once().
-			Return(ik, nil)
+			Return(nil)
 
-		_, err := uc.Create(ctx, ik, rd)
+		err := uc.Create(ctx, &ik, &entity.Ride{})
 
 		assert.Equal(t, entity.ErrIdemKeyUnknownRecoveryPoint, err)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, userID)
-		mockDS.AssertCalled(t, "UpdateIdempotencyKey", ctx, ik)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
+		m.idemKey.AssertNumberOfCalls(t, "Update", 1)
 	})
 
 	t.Run("Success on Create", func(t *testing.T) {
@@ -1083,7 +1082,7 @@ func TestCreate(t *testing.T) {
 			Email:            gofakeit.Email(),
 			StripeCustomerID: gofakeit.UUID(),
 		}
-		ik := &entity.IdempotencyKey{
+		ik := entity.IdempotencyKey{
 			ID:             keyID,
 			IdempotencyKey: key,
 			UserID:         user.ID,
@@ -1092,36 +1091,28 @@ func TestCreate(t *testing.T) {
 			RecoveryPoint:  idempotency.RecoveryPointStarted,
 		}
 
-		rd := &entity.Ride{}
+		rd := &entity.Ride{StripeChargeID: new(string)}
 
-		var mockAtomic *mock.Call
-		mockAtomic = mockDS.On("Atomic", mock.Anything, mock.Anything).
+		m := getMocksWithTimes(0)
+		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+
+		m.idemKey.On("Update", ctx, mock.AnythingOfType("*entity.IdempotencyKey")).
 			Times(4).
-			Run(func(args mock.Arguments) {
-				fn, ok := args.Get(1).(func(rocketride.Datastore) error)
-				if !ok {
-					panic("argument mismatch")
-				}
-				mockAtomic.Return(fn(mockDS))
-			})
-
-		mockDS.On("UpdateIdempotencyKey", ctx, ik).
-			Times(5).
-			Return(ik, nil)
+			Return(nil)
 
 		// Get Idempotency Key
-		mockDS.On("GetIdempotencyKey", ctx, key, user.ID).
+		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
 			Return(ik, nil)
 
 		// Create Ride
-		mockDS.On("CreateRide", ctx, rd).
+		m.ride.On("Save", ctx, rd).
 			Once().
-			Return(rd, nil)
+			Return(nil)
 
-		mockDS.On("CreateAuditRecord", ctx, mock.AnythingOfType("*entity.AuditRecord")).
+		m.audit.On("Save", ctx, mock.AnythingOfType("*entity.AuditRecord")).
 			Once().
-			Return(&entity.AuditRecord{}, nil)
+			Return(nil)
 
 		// Create Charge
 		gock.New(stripeURL).
@@ -1129,23 +1120,23 @@ func TestCreate(t *testing.T) {
 			Reply(200).
 			JSON(map[string]string{"foo": "bar"})
 
-		mockDS.On("UpdateRide", ctx, rd).
+		m.ride.On("Update", ctx, rd).
 			Once().
-			Return(rd, nil)
+			Return(nil)
 
 		// Send Receipt
-		mockDS.On("CreateStagedJob", ctx, mock.AnythingOfType("*entity.StagedJob")).
+		m.job.On("Save", ctx, mock.AnythingOfType("*entity.StagedJob")).
 			Once().
-			Return(&entity.StagedJob{}, nil)
+			Return(nil)
 
-		res, err := uc.Create(ctx, ik, rd)
+		err := uc.Create(ctx, &ik, rd)
 
 		assert.NoError(t, err)
-		assert.Equal(t, ik, res)
-		mockDS.AssertCalled(t, "GetIdempotencyKey", ctx, key, user.ID)
-		mockDS.AssertCalled(t, "CreateRide", ctx, rd)
-		mockDS.AssertCalled(t, "CreateAuditRecord", ctx, mock.AnythingOfType("*entity.AuditRecord"))
-		mockDS.AssertCalled(t, "UpdateRide", ctx, rd)
-		mockDS.AssertCalled(t, "CreateStagedJob", ctx, mock.AnythingOfType("*entity.StagedJob"))
+		m.idemKey.AssertNumberOfCalls(t, "Update", 4)
+		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
+		m.ride.AssertNumberOfCalls(t, "Save", 1)
+		m.audit.AssertNumberOfCalls(t, "Save", 1)
+		m.ride.AssertNumberOfCalls(t, "Update", 1)
+		m.job.AssertNumberOfCalls(t, "Save", 1)
 	})
 }

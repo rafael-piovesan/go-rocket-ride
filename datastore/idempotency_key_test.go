@@ -12,7 +12,10 @@ import (
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/idempotency"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/db"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testfixtures"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +28,7 @@ func TestIdempotencyKey(t *testing.T) {
 	// database up
 	dsn, terminate, err := testcontainer.NewPostgresContainer()
 	require.NoError(t, err)
-	defer terminate(ctx)
+	defer func() { _ = terminate(ctx) }()
 
 	// migrations up
 	err = migrate.Up(dsn, "db/migrations")
@@ -41,8 +44,8 @@ func TestIdempotencyKey(t *testing.T) {
 	require.NoError(t, err)
 
 	// conntect to database
-	store, err := NewStore(dsn)
-	require.NoError(t, err)
+	db, _ := db.Connect(config.Config{DBSource: dsn})
+	store := NewIdempotencyKey(db)
 
 	// test entity
 	now := time.Now()
@@ -59,15 +62,14 @@ func TestIdempotencyKey(t *testing.T) {
 	}
 
 	t.Run("Idempotency Key not found", func(t *testing.T) {
-		_, err := store.GetIdempotencyKey(ctx, idemKey, userID)
-		assert.ErrorIs(t, err, entity.ErrNotFound)
+		_, err := store.FindOne(ctx, IdemKeyWithKey(idemKey), IdemKeyWithUserID(userID))
+		assert.ErrorIs(t, err, repo.ErrRecordNotFound)
 	})
 
 	t.Run("Create Idempotency Key", func(t *testing.T) {
-		res, err := store.CreateIdempotencyKey(ctx, ik)
+		err := store.Save(ctx, ik)
 		if assert.NoError(t, err) {
-			ik.ID = res.ID
-			assert.Equal(t, ik, res)
+			assert.Greater(t, ik.ID, int64(0))
 		}
 	})
 
@@ -91,16 +93,14 @@ func TestIdempotencyKey(t *testing.T) {
 		ik.ResponseCode = &resCode
 		ik.ResponseBody = &resBody
 
-		res, err := store.UpdateIdempotencyKey(ctx, ik)
-		if assert.NoError(t, err) {
-			assert.Equal(t, ik, res)
-		}
+		err := store.Update(ctx, ik)
+		assert.NoError(t, err)
 	})
 
 	t.Run("Get Idempotency Key", func(t *testing.T) {
-		res, err := store.GetIdempotencyKey(ctx, idemKey, userID)
+		res, err := store.FindOne(ctx, IdemKeyWithKey(idemKey), IdemKeyWithUserID(userID))
 		if assert.NoError(t, err) {
-			assert.Equal(t, ik, res)
+			assert.Equal(t, *ik, res)
 		}
 	})
 }

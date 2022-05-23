@@ -19,26 +19,25 @@ Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#roc
 
 ```sh
 .
-├── api               # application ports
-│   └── http          # HTTP transport layer
+├── api               # HTTP transport layer
 ├── cmd               # application commands
 │   └── api           # 'main.go' for running the API server
-├── datastore         # app data stores (e.g., PostgreSQL, MySQL, etc.)
-│   └── bun           # Postgres data access based on Bun ORM 
+├── datastore         # Postgres data access based on Bun ORM 
 ├── db                # database related files
 │   ├── fixtures      # fixtures used in integration tests and local development
-│   ├── migrations    # db migrations
-│   └── queries       # Sqlc db queries
+│   └── migrations    # db migrations
 ├── entity            # application entities (including their specific enum types)
 ├── mocks             # interface mocks for unit testing
 ├── pkg               # 3rd party lib wrappers
+│   ├── config        # handle config via env vars and .env files
+│   ├── db            # handle Postgres connections
+│   ├── httpserver    # http server with default config and behavior
 │   ├── migrate       # help with db migrations during integration tests
+│   ├── repo          # CRUD repository implementation
 │   ├── stripemock    # set Stripe's API SDK Backend to use stripe-mock
 │   ├── testcontainer # create db containers used in integration tests
 │   └── testfixtures  # load db fixtures needed for integration tests
-├── usecase           # application use cases
-├── config.go         # handle config via env vars and .env files
-└── rocketride.go     # interface definitions
+└── usecase           # application use cases
 ```
 
 ## Setup
@@ -66,7 +65,7 @@ DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable make mig
 DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable make fixtures
 
 # start the API server
-make server
+task api
 ```
 Once the server is up running, send requests to it:
 ```sh

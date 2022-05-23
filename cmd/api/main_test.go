@@ -23,7 +23,7 @@ func TestMain(t *testing.T) {
 		stdout, stderr, err := startSubprocess(t)
 		if e, ok := err.(*exec.ExitError); ok && !e.Success() {
 			assert.Empty(t, stdout)
-			assert.Contains(t, stderr, "cannot load config")
+			assert.Contains(t, stderr, "Field validation for 'DBSource' failed on the 'required' tag")
 			return
 		}
 		t.Fatalf("process ran with err %v, want exit status 1", err)
@@ -33,7 +33,7 @@ func TestMain(t *testing.T) {
 		stdout, stderr, err := startSubprocess(t, "DB_SOURCE=rides", "SERVER_ADDRESS=foo", "STRIPE_KEY=bar")
 		if e, ok := err.(*exec.ExitError); ok && !e.Success() {
 			assert.Empty(t, stdout)
-			assert.Contains(t, stderr, "cannot open database")
+			assert.Contains(t, stderr, "pgdriver: invalid scheme")
 			return
 		}
 		t.Fatalf("process ran with err %v, want exit status 1", err)

@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v6"
-	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/db"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testfixtures"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +24,7 @@ func TestUser(t *testing.T) {
 	// database up
 	dsn, terminate, err := testcontainer.NewPostgresContainer()
 	require.NoError(t, err)
-	defer terminate(ctx)
+	defer func() { _ = terminate(ctx) }()
 
 	// migrations up
 	err = migrate.Up(dsn, "db/migrations")
@@ -38,16 +40,16 @@ func TestUser(t *testing.T) {
 	require.NoError(t, err)
 
 	// conntect to database
-	store, err := NewStore(dsn)
-	require.NoError(t, err)
+	db, _ := db.Connect(config.Config{DBSource: dsn})
+	store := NewUser(db)
 
 	t.Run("User not found", func(t *testing.T) {
-		_, err := store.GetUserByEmail(ctx, gofakeit.FarmAnimal())
-		assert.ErrorIs(t, err, entity.ErrNotFound)
+		_, err := store.FindOne(ctx, UserWithEmail(gofakeit.FarmAnimal()))
+		assert.ErrorIs(t, err, repo.ErrRecordNotFound)
 	})
 
 	t.Run("User found", func(t *testing.T) {
-		u, err := store.GetUserByEmail(ctx, userEmail)
+		u, err := store.FindOne(ctx, UserWithEmail(userEmail))
 		assert.NoError(t, err)
 		assert.Equal(t, userID, u.ID)
 		assert.Equal(t, userEmail, u.Email)

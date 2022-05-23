@@ -1,4 +1,4 @@
-package rocketride
+package config
 
 import (
 	"fmt"
@@ -23,8 +23,13 @@ type Config struct {
 	StripeKey      string `mapstructure:"STRIPE_KEY"  validate:"required"`
 }
 
-// LoadConfig reads configuration from file or environment variables.
-func LoadConfig(cfgPath string) (config Config, err error) {
+// Load reads configuration from file or environment variables.
+func Load() (config Config, err error) {
+	return LoadFromPath(".")
+}
+
+// LoadFromPath reads configuration from file or environment variables.
+func LoadFromPath(cfgPath string) (config Config, err error) {
 	// set config file path, name and extension (e.g,'/path-to-config/app.env')
 	viper.AddConfigPath(cfgPath)
 	viper.SetConfigName(cfgFileName)

@@ -10,6 +10,8 @@ import (
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/audit"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/db"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testfixtures"
@@ -24,7 +26,7 @@ func TestAuditRecord(t *testing.T) {
 	// database up
 	dsn, terminate, err := testcontainer.NewPostgresContainer()
 	require.NoError(t, err)
-	defer terminate(ctx)
+	defer func() { _ = terminate(ctx) }()
 
 	// migrations up
 	err = migrate.Up(dsn, "db/migrations")
@@ -39,8 +41,8 @@ func TestAuditRecord(t *testing.T) {
 	require.NoError(t, err)
 
 	// conntect to database
-	store, err := NewStore(dsn)
-	require.NoError(t, err)
+	db, _ := db.Connect(config.Config{DBSource: dsn})
+	store := NewAuditRecord(db)
 
 	t.Run("Create Audit Record", func(t *testing.T) {
 		ip := pqtype.CIDR{}
@@ -56,11 +58,10 @@ func TestAuditRecord(t *testing.T) {
 			UserID:       userID,
 		}
 
-		res, err := store.CreateAuditRecord(ctx, ar)
+		err = store.Save(ctx, ar)
 
 		if assert.NoError(t, err) {
-			ar.ID = res.ID
-			assert.Equal(t, ar, res)
+			assert.Greater(t, ar.ID, int64(0))
 		}
 	})
 }
