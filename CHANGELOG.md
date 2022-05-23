@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/rafael-piovesan/go-rocket-ride/compare/v2.2.0...v2.3.0) (2022-05-23)
+
+
+### Features
+
+* add unit-of-work ([c81a6c2](https://github.com/rafael-piovesan/go-rocket-ride/commit/c81a6c2f36b77e64f1438e1f9c444ba2bae1c315))
+
 ## [2.2.0](https://github.com/rafael-piovesan/go-rocket-ride/compare/v2.1.0...v2.2.0) (2022-05-23)
 
 
