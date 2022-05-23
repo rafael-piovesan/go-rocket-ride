@@ -1,9 +1,9 @@
-package http
+package api
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/rafael-piovesan/go-rocket-ride/v2/api/http/handler"
-	"github.com/rafael-piovesan/go-rocket-ride/v2/api/http/middleware"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/api/handler"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/api/middleware"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/usecase"
 	"go.uber.org/fx"

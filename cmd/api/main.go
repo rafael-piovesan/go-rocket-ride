@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/rafael-piovesan/go-rocket-ride/v2/api/http"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/api"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/db"
@@ -22,7 +22,7 @@ func main() {
 			httpserver.New,
 		),
 		// Loading HTTP routes & handlers
-		http.Module,
+		api.Module,
 		// Replace the original Stripe API Backend with its mock
 		fx.Invoke(stripemock.Init),
 		fx.Invoke(httpserver.Invoke),
