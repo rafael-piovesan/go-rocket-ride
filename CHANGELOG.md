@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.1.0](https://github.com/rafael-piovesan/go-rocket-ride/compare/v2.0.0...v2.1.0) (2022-05-23)
+
+
+### Features
+
+* **httpserver:** handle errors ([c10a916](https://github.com/rafael-piovesan/go-rocket-ride/commit/c10a9163ce172ea951747bdfcbd6573d51420708))
+* **pkg:** add config pkg ([174c5a2](https://github.com/rafael-piovesan/go-rocket-ride/commit/174c5a2ea50522b7ed0323b2ab57a973a15b7b31))
+* **pkg:** add httpserver pkg ([d3987b5](https://github.com/rafael-piovesan/go-rocket-ride/commit/d3987b5530c3fa3afbc5a62101bfc342149f859f))
+* **pkg:** add repo & db pkg ([9085c71](https://github.com/rafael-piovesan/go-rocket-ride/commit/9085c7171531616bf6348d21b86cb698a64e9eba))
+
+
+### Bug Fixes
+
+* **testcontainer:** load pg driver ([a86e316](https://github.com/rafael-piovesan/go-rocket-ride/commit/a86e316abeb1ac4607a633eba2d066f0c43e6ea1))
+
 ## [2.0.0](https://github.com/rafael-piovesan/go-rocket-ride/compare/v1.0.0...v2.0.0) (2022-05-22)
 
 
