@@ -85,7 +85,7 @@ func TestSQLStore(t *testing.T) {
 		_, err := rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
-		err = store.Do(ctx, func(ds UOWStore) error {
+		err = store.Do(ctx, func(ds UnitOfWorkStore) error {
 			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
@@ -113,7 +113,7 @@ func TestSQLStore(t *testing.T) {
 			}
 		}()
 
-		_ = store.Do(ctx, func(ds UOWStore) error {
+		_ = store.Do(ctx, func(ds UnitOfWorkStore) error {
 			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
@@ -136,7 +136,7 @@ func TestSQLStore(t *testing.T) {
 			}
 		}()
 
-		err = store.Do(ctx, func(ds UOWStore) error {
+		err = store.Do(ctx, func(ds UnitOfWorkStore) error {
 			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
@@ -153,7 +153,7 @@ func TestSQLStore(t *testing.T) {
 		_, err := rides.FindOne(cancelCtx, datastore.RideWithIdemKeyID(keyID))
 		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
-		err = store.Do(ctx, func(ds UOWStore) error {
+		err = store.Do(ctx, func(ds UnitOfWorkStore) error {
 			err := ds.Rides().Save(cancelCtx, ride)
 			require.NoError(t, err)
 
@@ -174,7 +174,7 @@ func TestSQLStore(t *testing.T) {
 		_, err := rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
-		err = store.Do(ctx, func(ds UOWStore) error {
+		err = store.Do(ctx, func(ds UnitOfWorkStore) error {
 			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 

@@ -99,7 +99,7 @@ func (r *rideUC) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKe
 	// close proximity, one of the two will be aborted by Postgres because we're
 	// using a transaction with SERIALIZABLE isolation level. It may not look
 	// it, but this code is safe from races.
-	err = r.uow.Do(ctx, func(uows uow.UOWStore) error {
+	err = r.uow.Do(ctx, func(uows uow.UnitOfWorkStore) error {
 		key, err = uows.IdempotencyKeys().FindOne(
 			ctx,
 			datastore.IdemKeyWithKey(ik.IdempotencyKey),
@@ -159,7 +159,7 @@ func (r *rideUC) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKe
 func (r *rideUC) createRide(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
 	oip := originip.FromCtx(ctx)
 
-	err := r.uow.Do(ctx, func(uows uow.UOWStore) error {
+	err := r.uow.Do(ctx, func(uows uow.UnitOfWorkStore) error {
 		rd.IdempotencyKeyID = &ik.ID
 		rd.UserID = ik.UserID
 		err := uows.Rides().Save(ctx, rd)
@@ -193,7 +193,7 @@ func (r *rideUC) createCharge(ctx context.Context, ik *entity.IdempotencyKey, rd
 	var err error
 	var ride entity.Ride
 
-	err = r.uow.Do(ctx, func(uows uow.UOWStore) error {
+	err = r.uow.Do(ctx, func(uows uow.UnitOfWorkStore) error {
 		handleStripeErr := func(resCode *idempotency.ResponseCode, resBody *idempotency.ResponseBody) {
 			ik.LockedAt = nil
 			ik.ResponseCode = resCode
@@ -277,7 +277,7 @@ func (r *rideUC) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey) err
 	// Send a receipt asynchronously by adding an entry to the staged_jobs
 	// table. By funneling the job through Postgres, we make this
 	// operation transaction-safe.
-	err := r.uow.Do(ctx, func(uows uow.UOWStore) error {
+	err := r.uow.Do(ctx, func(uows uow.UnitOfWorkStore) error {
 		jobArgs := stagedjob.JobArgReceipt{
 			Amount:   int64(20),
 			Currency: "usd",

@@ -16,7 +16,7 @@ type uowStore struct {
 	users        datastore.User
 }
 
-type UOWStore interface {
+type UnitOfWorkStore interface {
 	AuditRecords() datastore.AuditRecord
 	IdempotencyKeys() datastore.IdempotencyKey
 	Rides() datastore.Ride
@@ -44,7 +44,7 @@ func (u uowStore) Users() datastore.User {
 	return u.users
 }
 
-type UOWBlock func(store UOWStore) error
+type UnitOfWorkBlock func(store UnitOfWorkStore) error
 
 type unitOfWork struct {
 	conn *bun.DB
@@ -52,7 +52,7 @@ type unitOfWork struct {
 }
 
 type UnitOfWork interface {
-	Do(context.Context, UOWBlock) error
+	Do(context.Context, UnitOfWorkBlock) error
 }
 
 func New(db *bun.DB) UnitOfWork {
@@ -62,7 +62,7 @@ func New(db *bun.DB) UnitOfWork {
 	}
 }
 
-func (s *unitOfWork) Do(ctx context.Context, fn UOWBlock) error {
+func (s *unitOfWork) Do(ctx context.Context, fn UnitOfWorkBlock) error {
 	return s.conn.RunInTx(ctx, &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 		newStore := &uowStore{
 			auditRecords: datastore.NewAuditRecord(tx),

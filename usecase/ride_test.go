@@ -66,7 +66,7 @@ func getMocksWithTimes(n int) testMocks {
 		job:     &mocks.StagedJob{},
 	}
 
-	mockAS := &mocks.UOWStore{}
+	mockAS := &mocks.UnitOfWorkStore{}
 	mockAS.On("AuditRecords").Return(m.audit)
 	mockAS.On("IdempotencyKeys").Return(m.idemKey)
 	mockAS.On("Rides").Return(m.ride)
@@ -76,7 +76,7 @@ func getMocksWithTimes(n int) testMocks {
 	var mockAtomic *mock.Call
 	mockAtomic = m.store.On("Do", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
-			fn, ok := args.Get(1).(uow.UOWBlock)
+			fn, ok := args.Get(1).(uow.UnitOfWorkBlock)
 			if !ok {
 				panic("argument mismatch")
 			}
