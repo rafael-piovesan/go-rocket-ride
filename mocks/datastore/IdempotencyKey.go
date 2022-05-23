@@ -5,11 +5,11 @@ package mocks
 import (
 	context "context"
 
+	data "github.com/rafael-piovesan/go-rocket-ride/v2/pkg/data"
+
 	entity "github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 
 	mock "github.com/stretchr/testify/mock"
-
-	repo "github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 
 	testing "testing"
 )
@@ -34,7 +34,7 @@ func (_m *IdempotencyKey) Delete(_a0 context.Context, _a1 *entity.IdempotencyKey
 }
 
 // FindAll provides a mock function with given fields: _a0, _a1
-func (_m *IdempotencyKey) FindAll(_a0 context.Context, _a1 ...repo.SelectCriteria) ([]entity.IdempotencyKey, error) {
+func (_m *IdempotencyKey) FindAll(_a0 context.Context, _a1 ...data.SelectCriteria) ([]entity.IdempotencyKey, error) {
 	_va := make([]interface{}, len(_a1))
 	for _i := range _a1 {
 		_va[_i] = _a1[_i]
@@ -45,7 +45,7 @@ func (_m *IdempotencyKey) FindAll(_a0 context.Context, _a1 ...repo.SelectCriteri
 	ret := _m.Called(_ca...)
 
 	var r0 []entity.IdempotencyKey
-	if rf, ok := ret.Get(0).(func(context.Context, ...repo.SelectCriteria) []entity.IdempotencyKey); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...data.SelectCriteria) []entity.IdempotencyKey); ok {
 		r0 = rf(_a0, _a1...)
 	} else {
 		if ret.Get(0) != nil {
@@ -54,7 +54,7 @@ func (_m *IdempotencyKey) FindAll(_a0 context.Context, _a1 ...repo.SelectCriteri
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, ...repo.SelectCriteria) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, ...data.SelectCriteria) error); ok {
 		r1 = rf(_a0, _a1...)
 	} else {
 		r1 = ret.Error(1)
@@ -64,7 +64,7 @@ func (_m *IdempotencyKey) FindAll(_a0 context.Context, _a1 ...repo.SelectCriteri
 }
 
 // FindOne provides a mock function with given fields: _a0, _a1
-func (_m *IdempotencyKey) FindOne(_a0 context.Context, _a1 ...repo.SelectCriteria) (entity.IdempotencyKey, error) {
+func (_m *IdempotencyKey) FindOne(_a0 context.Context, _a1 ...data.SelectCriteria) (entity.IdempotencyKey, error) {
 	_va := make([]interface{}, len(_a1))
 	for _i := range _a1 {
 		_va[_i] = _a1[_i]
@@ -75,14 +75,14 @@ func (_m *IdempotencyKey) FindOne(_a0 context.Context, _a1 ...repo.SelectCriteri
 	ret := _m.Called(_ca...)
 
 	var r0 entity.IdempotencyKey
-	if rf, ok := ret.Get(0).(func(context.Context, ...repo.SelectCriteria) entity.IdempotencyKey); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...data.SelectCriteria) entity.IdempotencyKey); ok {
 		r0 = rf(_a0, _a1...)
 	} else {
 		r0 = ret.Get(0).(entity.IdempotencyKey)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, ...repo.SelectCriteria) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, ...data.SelectCriteria) error); ok {
 		r1 = rf(_a0, _a1...)
 	} else {
 		r1 = ret.Error(1)

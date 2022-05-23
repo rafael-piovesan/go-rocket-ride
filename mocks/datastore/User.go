@@ -5,11 +5,11 @@ package mocks
 import (
 	context "context"
 
+	data "github.com/rafael-piovesan/go-rocket-ride/v2/pkg/data"
+
 	entity "github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 
 	mock "github.com/stretchr/testify/mock"
-
-	repo "github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 
 	testing "testing"
 )
@@ -34,7 +34,7 @@ func (_m *User) Delete(_a0 context.Context, _a1 *entity.User) error {
 }
 
 // FindAll provides a mock function with given fields: _a0, _a1
-func (_m *User) FindAll(_a0 context.Context, _a1 ...repo.SelectCriteria) ([]entity.User, error) {
+func (_m *User) FindAll(_a0 context.Context, _a1 ...data.SelectCriteria) ([]entity.User, error) {
 	_va := make([]interface{}, len(_a1))
 	for _i := range _a1 {
 		_va[_i] = _a1[_i]
@@ -45,7 +45,7 @@ func (_m *User) FindAll(_a0 context.Context, _a1 ...repo.SelectCriteria) ([]enti
 	ret := _m.Called(_ca...)
 
 	var r0 []entity.User
-	if rf, ok := ret.Get(0).(func(context.Context, ...repo.SelectCriteria) []entity.User); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...data.SelectCriteria) []entity.User); ok {
 		r0 = rf(_a0, _a1...)
 	} else {
 		if ret.Get(0) != nil {
@@ -54,7 +54,7 @@ func (_m *User) FindAll(_a0 context.Context, _a1 ...repo.SelectCriteria) ([]enti
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, ...repo.SelectCriteria) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, ...data.SelectCriteria) error); ok {
 		r1 = rf(_a0, _a1...)
 	} else {
 		r1 = ret.Error(1)
@@ -64,7 +64,7 @@ func (_m *User) FindAll(_a0 context.Context, _a1 ...repo.SelectCriteria) ([]enti
 }
 
 // FindOne provides a mock function with given fields: _a0, _a1
-func (_m *User) FindOne(_a0 context.Context, _a1 ...repo.SelectCriteria) (entity.User, error) {
+func (_m *User) FindOne(_a0 context.Context, _a1 ...data.SelectCriteria) (entity.User, error) {
 	_va := make([]interface{}, len(_a1))
 	for _i := range _a1 {
 		_va[_i] = _a1[_i]
@@ -75,14 +75,14 @@ func (_m *User) FindOne(_a0 context.Context, _a1 ...repo.SelectCriteria) (entity
 	ret := _m.Called(_ca...)
 
 	var r0 entity.User
-	if rf, ok := ret.Get(0).(func(context.Context, ...repo.SelectCriteria) entity.User); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, ...data.SelectCriteria) entity.User); ok {
 		r0 = rf(_a0, _a1...)
 	} else {
 		r0 = ret.Get(0).(entity.User)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, ...repo.SelectCriteria) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, ...data.SelectCriteria) error); ok {
 		r1 = rf(_a0, _a1...)
 	} else {
 		r1 = ret.Error(1)

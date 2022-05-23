@@ -13,9 +13,9 @@ import (
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/idempotency"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/data"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/db"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
-	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testfixtures"
 	"github.com/stretchr/testify/assert"
@@ -63,7 +63,7 @@ func TestIdempotencyKey(t *testing.T) {
 
 	t.Run("Idempotency Key not found", func(t *testing.T) {
 		_, err := store.FindOne(ctx, IdemKeyWithKey(idemKey), IdemKeyWithUserID(userID))
-		assert.ErrorIs(t, err, repo.ErrRecordNotFound)
+		assert.ErrorIs(t, err, data.ErrRecordNotFound)
 	})
 
 	t.Run("Create Idempotency Key", func(t *testing.T) {

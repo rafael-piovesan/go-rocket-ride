@@ -19,7 +19,7 @@ import (
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/originip"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/stagedjob"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
-	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/data"
 )
 
 type rideUC struct {
@@ -105,7 +105,7 @@ func (r *rideUC) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKe
 			datastore.IdemKeyWithUserID(ik.UserID),
 		)
 		if err != nil {
-			if errors.Is(err, repo.ErrRecordNotFound) {
+			if errors.Is(err, data.ErrRecordNotFound) {
 				now := time.Now().UTC()
 				ik.LastRunAt = now
 				ik.LockedAt = &now
