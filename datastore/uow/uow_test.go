@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-package datastore
+package uow
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v6"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/audit"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
@@ -55,7 +56,7 @@ func TestSQLStore(t *testing.T) {
 	// connect to database
 	db, _ := db.Connect(config.Config{DBSource: dsn})
 	store := New(db)
-	rides := NewRide(db)
+	rides := datastore.NewRide(db)
 
 	// test entities
 	ride := &entity.Ride{
@@ -81,10 +82,10 @@ func TestSQLStore(t *testing.T) {
 	}
 
 	t.Run("Rollback on error", func(t *testing.T) {
-		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+		_, err := rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
-		err = store.Atomic(ctx, func(ds AtomicStore) error {
+		err = store.Do(ctx, func(ds UOWStore) error {
 			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
@@ -95,24 +96,24 @@ func TestSQLStore(t *testing.T) {
 		})
 
 		if assert.EqualError(t, err, "error rollback") {
-			_, err = rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+			_, err = rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 			assert.ErrorIs(t, err, data.ErrRecordNotFound)
 		}
 	})
 
 	t.Run("Rollback on panic with error", func(t *testing.T) {
-		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+		_, err := rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
 		defer func() {
 			p := recover()
 			if assert.NotNil(t, p) {
-				_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+				_, err := rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 				assert.ErrorIs(t, err, data.ErrRecordNotFound)
 			}
 		}()
 
-		_ = store.Atomic(ctx, func(ds AtomicStore) error {
+		_ = store.Do(ctx, func(ds UOWStore) error {
 			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
@@ -124,18 +125,18 @@ func TestSQLStore(t *testing.T) {
 	})
 
 	t.Run("Rollback on panic without error", func(t *testing.T) {
-		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+		_, err := rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
 		defer func() {
 			p := recover()
 			if assert.NotNil(t, p) && assert.Equal(t, "panic rollback", p) {
-				_, err = rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+				_, err = rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 				assert.ErrorIs(t, err, data.ErrRecordNotFound)
 			}
 		}()
 
-		err = store.Atomic(ctx, func(ds AtomicStore) error {
+		err = store.Do(ctx, func(ds UOWStore) error {
 			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
@@ -149,10 +150,10 @@ func TestSQLStore(t *testing.T) {
 	t.Run("Rollback on context canceled", func(t *testing.T) {
 		cancelCtx, cancel := context.WithCancel(ctx)
 
-		_, err := rides.FindOne(cancelCtx, RideWithIdemKeyID(keyID))
+		_, err := rides.FindOne(cancelCtx, datastore.RideWithIdemKeyID(keyID))
 		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
-		err = store.Atomic(ctx, func(ds AtomicStore) error {
+		err = store.Do(ctx, func(ds UOWStore) error {
 			err := ds.Rides().Save(cancelCtx, ride)
 			require.NoError(t, err)
 
@@ -164,16 +165,16 @@ func TestSQLStore(t *testing.T) {
 		})
 
 		if assert.EqualError(t, err, "context canceled") {
-			_, err = rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+			_, err = rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 			assert.ErrorIs(t, err, data.ErrRecordNotFound)
 		}
 	})
 
 	t.Run("Commit on success", func(t *testing.T) {
-		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+		_, err := rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
-		err = store.Atomic(ctx, func(ds AtomicStore) error {
+		err = store.Do(ctx, func(ds UOWStore) error {
 			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
@@ -184,7 +185,7 @@ func TestSQLStore(t *testing.T) {
 		})
 
 		if assert.NoError(t, err) {
-			res, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+			res, err := rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 			if assert.NoError(t, err) {
 				ride.ID = res.ID
 				assert.Equal(t, *ride, res)

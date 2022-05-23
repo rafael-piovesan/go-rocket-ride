@@ -13,6 +13,7 @@ import (
 	"github.com/stripe/stripe-go/v72/charge"
 
 	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore/uow"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/audit"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/idempotency"
@@ -23,23 +24,23 @@ import (
 )
 
 type rideUC struct {
-	cfg     config.Config
-	store   datastore.Store
-	ikStore datastore.IdempotencyKey
+	cfg config.Config
+	uow uow.UnitOfWork
+	iks datastore.IdempotencyKey
 }
 
 type Ride interface {
 	Create(context.Context, *entity.IdempotencyKey, *entity.Ride) error
 }
 
-func NewRide(cfg config.Config, store datastore.Store, ikStore datastore.IdempotencyKey) Ride {
+func NewRide(cfg config.Config, uow uow.UnitOfWork, iks datastore.IdempotencyKey) Ride {
 	// setup Stripe's key
 	stripe.Key = cfg.StripeKey
 
 	return &rideUC{
-		cfg:     cfg,
-		store:   store,
-		ikStore: ikStore,
+		cfg: cfg,
+		uow: uow,
+		iks: iks,
 	}
 }
 
@@ -98,8 +99,8 @@ func (r *rideUC) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKe
 	// close proximity, one of the two will be aborted by Postgres because we're
 	// using a transaction with SERIALIZABLE isolation level. It may not look
 	// it, but this code is safe from races.
-	err = r.store.Atomic(ctx, func(ds datastore.AtomicStore) error {
-		key, err = ds.IdempotencyKeys().FindOne(
+	err = r.uow.Do(ctx, func(uows uow.UOWStore) error {
+		key, err = uows.IdempotencyKeys().FindOne(
 			ctx,
 			datastore.IdemKeyWithKey(ik.IdempotencyKey),
 			datastore.IdemKeyWithUserID(ik.UserID),
@@ -110,7 +111,7 @@ func (r *rideUC) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKe
 				ik.LastRunAt = now
 				ik.LockedAt = &now
 				ik.RecoveryPoint = idempotency.RecoveryPointStarted
-				err = ds.IdempotencyKeys().Save(ctx, ik)
+				err = uows.IdempotencyKeys().Save(ctx, ik)
 				key = *ik
 			}
 			return err
@@ -146,7 +147,7 @@ func (r *rideUC) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKe
 			now := time.Now().UTC()
 			key.LastRunAt = now
 			key.LockedAt = &now
-			err = ds.IdempotencyKeys().Update(ctx, &key)
+			err = uows.IdempotencyKeys().Update(ctx, &key)
 			return err
 		}
 		return nil
@@ -158,10 +159,10 @@ func (r *rideUC) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKe
 func (r *rideUC) createRide(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
 	oip := originip.FromCtx(ctx)
 
-	err := r.store.Atomic(ctx, func(ds datastore.AtomicStore) error {
+	err := r.uow.Do(ctx, func(uows uow.UOWStore) error {
 		rd.IdempotencyKeyID = &ik.ID
 		rd.UserID = ik.UserID
-		err := ds.Rides().Save(ctx, rd)
+		err := uows.Rides().Save(ctx, rd)
 		if err != nil {
 			return err
 		}
@@ -176,13 +177,13 @@ func (r *rideUC) createRide(ctx context.Context, ik *entity.IdempotencyKey, rd *
 			ResourceType: audit.ResourceTypeRide,
 			UserID:       ik.UserID,
 		}
-		err = ds.AuditRecords().Save(ctx, ar)
+		err = uows.AuditRecords().Save(ctx, ar)
 		if err != nil {
 			return err
 		}
 
 		ik.RecoveryPoint = idempotency.RecoveryPointCreated
-		return ds.IdempotencyKeys().Update(ctx, ik)
+		return uows.IdempotencyKeys().Update(ctx, ik)
 	})
 
 	return err
@@ -192,14 +193,14 @@ func (r *rideUC) createCharge(ctx context.Context, ik *entity.IdempotencyKey, rd
 	var err error
 	var ride entity.Ride
 
-	err = r.store.Atomic(ctx, func(ds datastore.AtomicStore) error {
+	err = r.uow.Do(ctx, func(uows uow.UOWStore) error {
 		handleStripeErr := func(resCode *idempotency.ResponseCode, resBody *idempotency.ResponseBody) {
 			ik.LockedAt = nil
 			ik.ResponseCode = resCode
 			ik.ResponseBody = resBody
 			// short-circuit to the final state
 			ik.RecoveryPoint = idempotency.RecoveryPointFinished
-			err = ds.IdempotencyKeys().Update(ctx, ik)
+			err = uows.IdempotencyKeys().Update(ctx, ik)
 			if err != nil {
 				log.Errorf("error updating idem key after stripe error: %v", err)
 			}
@@ -207,7 +208,7 @@ func (r *rideUC) createCharge(ctx context.Context, ik *entity.IdempotencyKey, rd
 
 		// check if we're restarting from a Recovery Point and retrieve a ride from db
 		if rd == nil {
-			ride, err = ds.Rides().FindOne(ctx, datastore.RideWithIdemKeyID(ik.ID))
+			ride, err = uows.Rides().FindOne(ctx, datastore.RideWithIdemKeyID(ik.ID))
 			if err != nil {
 				return err
 			}
@@ -261,13 +262,13 @@ func (r *rideUC) createCharge(ctx context.Context, ik *entity.IdempotencyKey, rd
 
 		ride.StripeChargeID = &c.ID
 		log.Debugf("stripe charge id: %v", c.ID)
-		err = ds.Rides().Update(ctx, &ride)
+		err = uows.Rides().Update(ctx, &ride)
 		if err != nil {
 			return err
 		}
 
 		ik.RecoveryPoint = idempotency.RecoveryPointCharged
-		return ds.IdempotencyKeys().Update(ctx, ik)
+		return uows.IdempotencyKeys().Update(ctx, ik)
 	})
 	return err
 }
@@ -276,7 +277,7 @@ func (r *rideUC) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey) err
 	// Send a receipt asynchronously by adding an entry to the staged_jobs
 	// table. By funneling the job through Postgres, we make this
 	// operation transaction-safe.
-	err := r.store.Atomic(ctx, func(ds datastore.AtomicStore) error {
+	err := r.uow.Do(ctx, func(uows uow.UOWStore) error {
 		jobArgs := stagedjob.JobArgReceipt{
 			Amount:   int64(20),
 			Currency: "usd",
@@ -292,7 +293,7 @@ func (r *rideUC) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey) err
 			JobName: stagedjob.JobNameSendReceipt,
 			JobArgs: args,
 		}
-		err = ds.StagedJobs().Save(ctx, sj)
+		err = uows.StagedJobs().Save(ctx, sj)
 		if err != nil {
 			return err
 		}
@@ -304,14 +305,14 @@ func (r *rideUC) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey) err
 		ik.ResponseCode = &resCode
 		ik.ResponseBody = &resBody
 		ik.RecoveryPoint = idempotency.RecoveryPointFinished
-		return ds.IdempotencyKeys().Update(ctx, ik)
+		return uows.IdempotencyKeys().Update(ctx, ik)
 	})
 	return err
 }
 
 func (r *rideUC) unlockIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) {
 	ik.LockedAt = nil
-	err := r.ikStore.Update(ctx, ik)
+	err := r.iks.Update(ctx, ik)
 	if err != nil {
 		log.Errorf("unlock idem key error: %v", err)
 	}

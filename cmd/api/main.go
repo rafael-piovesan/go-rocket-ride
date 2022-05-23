@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/rafael-piovesan/go-rocket-ride/v2/api"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore/uow"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/db"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/httpserver"
@@ -16,7 +17,7 @@ func main() {
 			config.Load,
 			db.Connect,
 			db.ConnectionHandle,
-			datastore.New,
+			uow.New,
 			datastore.NewIdempotencyKey,
 			datastore.NewUser,
 			httpserver.New,
