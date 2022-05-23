@@ -43,7 +43,7 @@ func (h Handler) BindAndValidate(c echo.Context, i interface{}) error {
 	return nil
 }
 
-func (h *Handler) IdempotencyKey(c echo.Context) (ik entity.IdempotencyKey, err error) {
+func (h Handler) IdempotencyKey(c echo.Context) (ik entity.IdempotencyKey, err error) {
 	user, ok := context.GetUser(c)
 	if !ok {
 		err = echo.NewHTTPError(http.StatusUnauthorized, entity.ErrPermissionDenied.Error())
