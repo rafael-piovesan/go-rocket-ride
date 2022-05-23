@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/api/context"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 )
@@ -13,7 +14,7 @@ type userRequest struct {
 	UserKey string `header:"authorization" validate:"required"`
 }
 
-func NewUser(store datastore.User) echo.MiddlewareFunc {
+func User(store datastore.User) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			binder := &echo.DefaultBinder{}
@@ -36,7 +37,7 @@ func NewUser(store datastore.User) echo.MiddlewareFunc {
 				return echo.NewHTTPError(http.StatusUnauthorized, entity.ErrPermissionDenied.Error())
 			}
 
-			c.Set(string(entity.UserCtxKey), user)
+			context.AddUser(c, user)
 
 			return next(c)
 		}

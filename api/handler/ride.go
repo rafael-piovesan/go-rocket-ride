@@ -11,7 +11,6 @@ import (
 )
 
 type createRequest struct {
-	IdemKey string  `json:"idem_key" header:"idempotency-key" validate:"required,max=100"`
 	OrigLat float64 `json:"origin_lat" validate:"min=-90,max=90"`
 	OrigLon float64 `json:"origin_lon" validate:"min=-180,max=180"`
 	TgtLat  float64 `json:"target_lat" validate:"min=-90,max=90"`
@@ -28,7 +27,7 @@ func newCreateRequest() createRequest {
 }
 
 type Ride struct {
-	*Handler
+	Handler
 	uc usecase.Ride
 }
 
@@ -40,7 +39,7 @@ func NewRide(uc usecase.Ride) Ride {
 }
 
 func (r Ride) Create(c echo.Context) error {
-	user, err := r.GetUserFromCtx(c)
+	ik, err := r.IdempotencyKey(c)
 	if err != nil {
 		return err
 	}
@@ -58,36 +57,16 @@ func (r Ride) Create(c echo.Context) error {
 	}
 
 	rp, _ := json.Marshal(rd)
+	ik.RequestParams = rp
 
-	ik := &entity.IdempotencyKey{
-		IdempotencyKey: cr.IdemKey,
-		RequestMethod:  c.Request().Method,
-		RequestPath:    c.Request().RequestURI,
-		RequestParams:  rp,
-		UserID:         user.ID,
-		User:           &user,
-	}
-
-	err = r.uc.Create(c.Request().Context(), ik, rd)
+	err = r.uc.Create(c.Request().Context(), &ik, rd)
 	if err != nil {
 		return err
 	}
 
-	rCode, rBody, err := r.handleResponse(ik)
-	if err != nil {
-		return err
-	}
-
-	return c.JSONBlob(rCode, rBody)
-}
-
-func (r Ride) handleResponse(ik *entity.IdempotencyKey) (rCode int, rBody []byte, err error) {
 	if ik.ResponseCode == nil || ik.ResponseBody == nil {
-		err = errors.New("create ride: invalid response")
-		return
+		return errors.New("create ride: invalid response")
 	}
 
-	rCode = int(*ik.ResponseCode)
-	rBody, err = json.Marshal(*ik.ResponseBody)
-	return
+	return c.JSON(int(*ik.ResponseCode), ik.ResponseBody)
 }

@@ -10,9 +10,10 @@ import (
 )
 
 func routes(e *echo.Echo, userStore datastore.User, ride handler.Ride) {
-	e.Use(middleware.NewOriginIP())
-	e.Use(middleware.NewErrorMapper())
-	e.Use(middleware.NewUser(userStore))
+	e.Use(middleware.OriginIP())
+	e.Use(middleware.ErrorMapper())
+	e.Use(middleware.User(userStore))
+	e.Use(middleware.IdempotencyKey())
 
 	// Routes
 	e.POST("/", ride.Create)

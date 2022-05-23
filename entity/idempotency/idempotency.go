@@ -1,7 +1,6 @@
 package idempotency
 
 import (
-	"encoding/json"
 	"net/http"
 )
 
@@ -18,7 +17,7 @@ func (r RecoveryPoint) String() string {
 	return string(r)
 }
 
-type ResponseCode int32
+type ResponseCode int
 
 const (
 	ResponseCodeOK                ResponseCode = http.StatusOK
@@ -29,8 +28,4 @@ const (
 
 type ResponseBody struct {
 	Message string `json:"message"`
-}
-
-func (r *ResponseBody) Marshal() (json.RawMessage, error) {
-	return json.Marshal(r)
 }
