@@ -22,7 +22,8 @@ Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#roc
 ├── api               # HTTP transport layer
 ├── cmd               # application commands
 │   └── api           # 'main.go' for running the API server
-├── datastore         # Postgres data access based on Bun ORM 
+├── datastore         # Postgres data access based on Bun ORM
+│   └── uow           # unit-of-work handling
 ├── db                # database related files
 │   ├── fixtures      # fixtures used in integration tests and local development
 │   └── migrations    # db migrations
@@ -30,10 +31,10 @@ Quoting [Brandur's own words](https://github.com/brandur/rocket-rides-atomic#roc
 ├── mocks             # interface mocks for unit testing
 ├── pkg               # 3rd party lib wrappers
 │   ├── config        # handle config via env vars and .env files
+│   ├── data          # CRUD repository implementation
 │   ├── db            # handle Postgres connections
 │   ├── httpserver    # http server with default config and behavior
 │   ├── migrate       # help with db migrations during integration tests
-│   ├── repo          # CRUD repository implementation
 │   ├── stripemock    # set Stripe's API SDK Backend to use stripe-mock
 │   ├── testcontainer # create db containers used in integration tests
 │   └── testfixtures  # load db fixtures needed for integration tests
@@ -59,10 +60,10 @@ task deps
 docker-compose up -d
 
 # run db migrations, remember to export the $DSN env var before running it
-DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable make migrate
+DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable task db:migrate-up
 
 # load db fixtures, remember to export the $DSN env var before running it
-DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable make fixtures
+DSN=postgresql://postgres:postgres@localhost:5432/rides?sslmode=disable task db:fixtures
 
 # start the API server
 task api

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
-	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore/uow"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/idempotency"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/originip"
@@ -30,7 +30,7 @@ const (
 )
 
 type testMocks struct {
-	store   *mocks.Store
+	store   *mocks.UnitOfWork
 	idemKey *mocks.IdempotencyKey
 	ride    *mocks.Ride
 	audit   *mocks.AuditRecord
@@ -58,7 +58,7 @@ func getMocks() testMocks {
 
 func getMocksWithTimes(n int) testMocks {
 	m := testMocks{
-		store:   &mocks.Store{},
+		store:   &mocks.UnitOfWork{},
 		idemKey: &mocks.IdempotencyKey{},
 		ride:    &mocks.Ride{},
 		audit:   &mocks.AuditRecord{},
@@ -66,7 +66,7 @@ func getMocksWithTimes(n int) testMocks {
 		job:     &mocks.StagedJob{},
 	}
 
-	mockAS := &mocks.AtomicStore{}
+	mockAS := &mocks.UnitOfWorkStore{}
 	mockAS.On("AuditRecords").Return(m.audit)
 	mockAS.On("IdempotencyKeys").Return(m.idemKey)
 	mockAS.On("Rides").Return(m.ride)
@@ -74,9 +74,9 @@ func getMocksWithTimes(n int) testMocks {
 	mockAS.On("Users").Return(m.user)
 
 	var mockAtomic *mock.Call
-	mockAtomic = m.store.On("Atomic", mock.Anything, mock.Anything).
+	mockAtomic = m.store.On("Do", mock.Anything, mock.Anything).
 		Run(func(args mock.Arguments) {
-			fn, ok := args.Get(1).(datastore.AtomicBlock)
+			fn, ok := args.Get(1).(uow.UnitOfWorkBlock)
 			if !ok {
 				panic("argument mismatch")
 			}
@@ -121,7 +121,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 		retErr := errors.New("err GetIdempotencyKey")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
@@ -144,7 +144,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 		retErr := errors.New("err CreateIdempotencyKey")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
@@ -170,7 +170,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
@@ -217,7 +217,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
@@ -247,7 +247,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
@@ -281,7 +281,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 		retErr := errors.New("err UpdateIdempotencyKey")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
@@ -318,7 +318,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
@@ -346,7 +346,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
@@ -380,7 +380,7 @@ func TestCreateRide(t *testing.T) {
 		retErr := errors.New("err CreateRide")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.ride.On("Save", ctx, rd).
 			Once().
@@ -407,7 +407,7 @@ func TestCreateRide(t *testing.T) {
 		retErr := errors.New("err CreateAuditRecord")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.ride.On("Save", ctx, rd).
 			Once().
@@ -439,7 +439,7 @@ func TestCreateRide(t *testing.T) {
 		retErr := errors.New("err UpdateIdempotencyKey")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.ride.On("Save", ctx, rd).
 			Once().
@@ -474,7 +474,7 @@ func TestCreateRide(t *testing.T) {
 		rd := &entity.Ride{}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.ride.On("Save", ctx, rd).
 			Once().
@@ -517,7 +517,7 @@ func TestCreateCharge(t *testing.T) {
 		retErr := errors.New("err GetRideByIdempotencyKeyID")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
@@ -545,7 +545,7 @@ func TestCreateCharge(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
@@ -589,7 +589,7 @@ func TestCreateCharge(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
@@ -632,7 +632,7 @@ func TestCreateCharge(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
@@ -668,7 +668,7 @@ func TestCreateCharge(t *testing.T) {
 		retErr := errors.New("err UpdateRide")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
@@ -710,7 +710,7 @@ func TestCreateCharge(t *testing.T) {
 		retErr := errors.New("err UpdateIdempotencyKey")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
@@ -755,7 +755,7 @@ func TestCreateCharge(t *testing.T) {
 		rd := entity.Ride{StripeChargeID: new(string)}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.ride.On("FindOne", ctx, mock.Anything).
 			Once().
@@ -798,7 +798,7 @@ func TestSendReceipt(t *testing.T) {
 		retErr := errors.New("err CreateStagedJob")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.job.On("Save", ctx, mock.AnythingOfType("*entity.StagedJob")).
 			Once().
@@ -819,7 +819,7 @@ func TestSendReceipt(t *testing.T) {
 		retErr := errors.New("err UpdateIdempotencyKey")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.job.On("Save", ctx, mock.AnythingOfType("*entity.StagedJob")).
 			Once().
@@ -843,7 +843,7 @@ func TestSendReceipt(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.job.On("Save", ctx, mock.AnythingOfType("*entity.StagedJob")).
 			Once().
@@ -876,7 +876,7 @@ func TestUnlockIdempotencyKey(t *testing.T) {
 		retErr := errors.New("err UpdateIdempotencyKey")
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("Update", ctx, &ik).
 			Once().
@@ -891,7 +891,7 @@ func TestUnlockIdempotencyKey(t *testing.T) {
 		ik := entity.IdempotencyKey{}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("Update", ctx, &ik).
 			Once().
@@ -928,7 +928,7 @@ func TestCreate(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("Update", ctx, mock.AnythingOfType("*entity.IdempotencyKey")).
 			Twice().
@@ -941,7 +941,7 @@ func TestCreate(t *testing.T) {
 
 		// Create Ride
 		retErr := errors.New("error createRide")
-		m.store.On("Atomic", mock.Anything, mock.Anything).
+		m.store.On("Do", mock.Anything, mock.Anything).
 			Once().
 			Return(retErr)
 
@@ -963,7 +963,7 @@ func TestCreate(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("Update", ctx, mock.AnythingOfType("*entity.IdempotencyKey")).
 			Twice().
@@ -976,7 +976,7 @@ func TestCreate(t *testing.T) {
 
 		// Create Charge
 		retErr := errors.New("error createCharge")
-		m.store.On("Atomic", mock.Anything, mock.Anything).
+		m.store.On("Do", mock.Anything, mock.Anything).
 			Once().
 			Return(retErr)
 
@@ -999,7 +999,7 @@ func TestCreate(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("Update", ctx, mock.AnythingOfType("*entity.IdempotencyKey")).
 			Twice().
@@ -1012,7 +1012,7 @@ func TestCreate(t *testing.T) {
 
 		// Send Receipt
 		retErr := errors.New("error sendReceipt")
-		m.store.On("Atomic", mock.Anything, mock.Anything).
+		m.store.On("Do", mock.Anything, mock.Anything).
 			Once().
 			Return(retErr)
 
@@ -1033,7 +1033,7 @@ func TestCreate(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		// Get Idempotency Key
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
@@ -1057,7 +1057,7 @@ func TestCreate(t *testing.T) {
 		}
 
 		m := getMocks()
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
@@ -1094,7 +1094,7 @@ func TestCreate(t *testing.T) {
 		rd := &entity.Ride{StripeChargeID: new(string)}
 
 		m := getMocksWithTimes(0)
-		uc := rideUC{cfg: mockCfg, store: m.store, ikStore: m.idemKey}
+		uc := rideUC{cfg: mockCfg, uow: m.store, iks: m.idemKey}
 
 		m.idemKey.On("Update", ctx, mock.AnythingOfType("*entity.IdempotencyKey")).
 			Times(4).
