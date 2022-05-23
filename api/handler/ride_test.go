@@ -14,88 +14,20 @@ import (
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/labstack/echo/v4"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/api/context"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/idempotency"
 	mocks "github.com/rafael-piovesan/go-rocket-ride/v2/mocks/usecase"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/httpserver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCreateValidateHeader(t *testing.T) {
-	e := echo.New()
+func TestCreateValidate(t *testing.T) {
+	e := httpserver.New()
 	uc := &mocks.Ride{}
-	user := entity.User{
-		ID:               gofakeit.Int64(),
-		Email:            gofakeit.Email(),
-		StripeCustomerID: gofakeit.UUID(),
-	}
-	handler := NewRide(uc)
 
-	callArgs := []interface{}{
-		mock.Anything,
-		mock.AnythingOfType("*entity.IdempotencyKey"),
-		mock.AnythingOfType("*entity.Ride"),
-	}
-
-	payload := `{"origin_lat": 0.0, "origin_lon": 0.0, "target_lat": 0.0, "target_lon": 0.0}`
-	tests := []struct {
-		wantErr bool
-		header  string
-		value   string
-	}{
-		{wantErr: true, header: gofakeit.AnimalType(), value: gofakeit.LetterN(uint(gofakeit.Number(101, 1000)))},
-		{wantErr: true, header: gofakeit.AnimalType(), value: gofakeit.LetterN(uint(gofakeit.Number(0, 100)))},
-		{wantErr: true, header: "idempotency-key", value: gofakeit.LetterN(uint(gofakeit.Number(101, 1000)))},
-		{wantErr: false, header: "idempotency-key", value: gofakeit.LetterN(uint(gofakeit.Number(0, 100)))},
-	}
-	for _, tc := range tests {
-		if !tc.wantErr {
-			rCode := idempotency.ResponseCodeOK
-			rBody := idempotency.ResponseBody{Message: "ok"}
-
-			uc.On("Create", callArgs...).Once().Return(nil).Run(func(args mock.Arguments) {
-				arg, ok := args.Get(1).(*entity.IdempotencyKey)
-				assert.True(t, ok)
-				arg.ResponseCode = &rCode
-				arg.ResponseBody = &rBody
-			})
-		}
-
-		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(payload))
-		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-
-		// testing different header values
-		req.Header.Set(tc.header, tc.value)
-
-		rec := httptest.NewRecorder()
-		c := e.NewContext(req, rec)
-		c.Set(string(entity.UserCtxKey), user)
-
-		err := handler.Create(c)
-
-		if tc.wantErr {
-			if assert.Error(t, err) && assert.IsType(t, (&echo.HTTPError{}), err) {
-				he := (err).(*echo.HTTPError)
-				assert.Equal(t, http.StatusBadRequest, he.Code)
-			}
-		} else {
-			if assert.NoError(t, err) {
-				assert.Equal(t, http.StatusOK, rec.Code)
-				assert.Equal(t, "{\"message\":\"ok\"}", rec.Body.String())
-			}
-		}
-	}
-}
-
-func TestCreateValidateBody(t *testing.T) {
-	e := echo.New()
-	uc := &mocks.Ride{}
-	user := entity.User{
-		ID:               gofakeit.Int64(),
-		Email:            gofakeit.Email(),
-		StripeCustomerID: gofakeit.UUID(),
-	}
 	handler := NewRide(uc)
 
 	callArgs := []interface{}{
@@ -106,29 +38,29 @@ func TestCreateValidateBody(t *testing.T) {
 
 	tpl := `{"origin_lat": %v, "origin_lon": %v, "target_lat": %v, "target_lon": %v}`
 	tests := []struct {
-		wantErr bool
+		fail    bool
 		payload string
 	}{
-		{wantErr: true, payload: fmt.Sprintf(tpl, -90.0000000001, 0.0, 0.0, 0.0)},
-		{wantErr: true, payload: fmt.Sprintf(tpl, 90.0000000001, 0.0, 0.0, 0.0)},
-		{wantErr: true, payload: fmt.Sprintf(tpl, 0.0, -180.0000000001, 0.0, 0.0)},
-		{wantErr: true, payload: fmt.Sprintf(tpl, 0.0, 180.0000000001, 0.0, 0.0)},
-		{wantErr: true, payload: fmt.Sprintf(tpl, 0.0, 0.0, -90.0000000001, 0.0)},
-		{wantErr: true, payload: fmt.Sprintf(tpl, 0.0, 0.0, 90.0000000001, 0.0)},
-		{wantErr: true, payload: fmt.Sprintf(tpl, 0.0, 0.0, 0.0, -180.0000000001)},
-		{wantErr: true, payload: fmt.Sprintf(tpl, 0.0, 0.0, 0.0, 180.0000000001)},
+		{fail: true, payload: fmt.Sprintf(tpl, -90.0000000001, 0.0, 0.0, 0.0)},
+		{fail: true, payload: fmt.Sprintf(tpl, 90.0000000001, 0.0, 0.0, 0.0)},
+		{fail: true, payload: fmt.Sprintf(tpl, 0.0, -180.0000000001, 0.0, 0.0)},
+		{fail: true, payload: fmt.Sprintf(tpl, 0.0, 180.0000000001, 0.0, 0.0)},
+		{fail: true, payload: fmt.Sprintf(tpl, 0.0, 0.0, -90.0000000001, 0.0)},
+		{fail: true, payload: fmt.Sprintf(tpl, 0.0, 0.0, 90.0000000001, 0.0)},
+		{fail: true, payload: fmt.Sprintf(tpl, 0.0, 0.0, 0.0, -180.0000000001)},
+		{fail: true, payload: fmt.Sprintf(tpl, 0.0, 0.0, 0.0, 180.0000000001)},
 
-		{wantErr: false, payload: fmt.Sprintf(tpl, -90.0, 0.0, 0.0, 0.0)},
-		{wantErr: false, payload: fmt.Sprintf(tpl, 90.0, 0.0, 0.0, 0.0)},
-		{wantErr: false, payload: fmt.Sprintf(tpl, 0.0, -180.0, 0.0, 0.0)},
-		{wantErr: false, payload: fmt.Sprintf(tpl, 0.0, 180.0, 0.0, 0.0)},
-		{wantErr: false, payload: fmt.Sprintf(tpl, 0.0, 0.0, -90.0, 0.0)},
-		{wantErr: false, payload: fmt.Sprintf(tpl, 0.0, 0.0, 90.0, 0.0)},
-		{wantErr: false, payload: fmt.Sprintf(tpl, 0.0, 0.0, 0.0, -180.0)},
-		{wantErr: false, payload: fmt.Sprintf(tpl, 0.0, 0.0, 0.0, 180.0)},
+		{fail: false, payload: fmt.Sprintf(tpl, -90.0, 0.0, 0.0, 0.0)},
+		{fail: false, payload: fmt.Sprintf(tpl, 90.0, 0.0, 0.0, 0.0)},
+		{fail: false, payload: fmt.Sprintf(tpl, 0.0, -180.0, 0.0, 0.0)},
+		{fail: false, payload: fmt.Sprintf(tpl, 0.0, 180.0, 0.0, 0.0)},
+		{fail: false, payload: fmt.Sprintf(tpl, 0.0, 0.0, -90.0, 0.0)},
+		{fail: false, payload: fmt.Sprintf(tpl, 0.0, 0.0, 90.0, 0.0)},
+		{fail: false, payload: fmt.Sprintf(tpl, 0.0, 0.0, 0.0, -180.0)},
+		{fail: false, payload: fmt.Sprintf(tpl, 0.0, 0.0, 0.0, 180.0)},
 	}
 	for _, tc := range tests {
-		if !tc.wantErr {
+		if !tc.fail {
 			rCode := idempotency.ResponseCodeOK
 			rBody := idempotency.ResponseBody{Message: "ok"}
 
@@ -142,25 +74,27 @@ func TestCreateValidateBody(t *testing.T) {
 
 		// testing different payload values
 		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.payload))
-
-		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		req.Header.Set("idempotency-key", gofakeit.UUID())
 		rec := httptest.NewRecorder()
+
+		req.Header.Add(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
 		c := e.NewContext(req, rec)
-		c.Set(string(entity.UserCtxKey), user)
+		context.AddUser(c, entity.User{})
+		context.AddIdemKey(c, entity.IdempotencyKey{})
 
 		err := handler.Create(c)
 
-		if tc.wantErr {
-			if assert.Error(t, err) && assert.IsType(t, (&echo.HTTPError{}), err) {
-				he := (err).(*echo.HTTPError)
+		if tc.fail {
+			assert.Error(t, err)
+
+			var he *echo.HTTPError
+			if errors.As(err, &he) {
 				assert.Equal(t, http.StatusBadRequest, he.Code)
 			}
 		} else {
-			if assert.NoError(t, err) {
-				assert.Equal(t, http.StatusOK, rec.Code)
-				assert.Equal(t, "{\"message\":\"ok\"}", rec.Body.String())
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, "{\"message\":\"ok\"}\n", rec.Body.String())
 		}
 	}
 }
@@ -168,11 +102,7 @@ func TestCreateValidateBody(t *testing.T) {
 func TestCreate(t *testing.T) {
 	e := echo.New()
 	uc := &mocks.Ride{}
-	user := entity.User{
-		ID:               gofakeit.Int64(),
-		Email:            gofakeit.Email(),
-		StripeCustomerID: gofakeit.UUID(),
-	}
+
 	handler := NewRide(uc)
 
 	callArgs := []interface{}{
@@ -191,8 +121,10 @@ func TestCreate(t *testing.T) {
 
 		err := handler.Create(c)
 
-		if assert.Error(t, err) && assert.IsType(t, (&echo.HTTPError{}), err) {
-			he := (err).(*echo.HTTPError)
+		assert.Error(t, err)
+
+		var he *echo.HTTPError
+		if errors.As(err, &he) {
 			assert.Equal(t, http.StatusUnauthorized, he.Code)
 			assert.Equal(t, entity.ErrPermissionDenied.Error(), he.Message)
 		}
@@ -258,11 +190,13 @@ func TestCreate(t *testing.T) {
 			uc.On("Create", callArgs...).Once().Return(tc.retError).Run(tc.retFunc)
 
 			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(payload))
-			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-			req.Header.Set("idempotency-key", gofakeit.UUID())
 			rec := httptest.NewRecorder()
+
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
 			c := e.NewContext(req, rec)
-			c.Set(string(entity.UserCtxKey), user)
+			context.AddUser(c, entity.User{})
+			context.AddIdemKey(c, entity.IdempotencyKey{})
 
 			err := handler.Create(c)
 
@@ -285,17 +219,19 @@ func TestCreate(t *testing.T) {
 		})
 
 		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(payload))
-		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-		req.Header.Set("idempotency-key", gofakeit.UUID())
 		rec := httptest.NewRecorder()
+
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+
 		c := e.NewContext(req, rec)
-		c.Set(string(entity.UserCtxKey), user)
+		context.AddUser(c, entity.User{})
+		context.AddIdemKey(c, entity.IdempotencyKey{})
 
 		err = handler.Create(c)
 
 		if assert.NoError(t, err) {
 			assert.Equal(t, http.StatusOK, rec.Code)
-			assert.Equal(t, body, rec.Body.Bytes())
+			assert.Contains(t, rec.Body.String(), string(body))
 		}
 	})
 }
