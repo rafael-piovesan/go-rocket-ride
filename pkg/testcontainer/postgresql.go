@@ -8,6 +8,9 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	// loading bun's official Postgres driver.
+	_ "github.com/uptrace/bun/driver/pgdriver"
 )
 
 // NewPostgresContainer creates a Postgres container and returns its DSN to be used
@@ -36,7 +39,7 @@ func NewPostgresContainer() (string, func(context.Context) error, error) {
 			},
 			WaitingFor: wait.ForSQL(
 				"5432/tcp",
-				"postgres",
+				"pg",
 				func(p nat.Port) string {
 					return fmt.Sprintf(templateURL, p.Port())
 				},
