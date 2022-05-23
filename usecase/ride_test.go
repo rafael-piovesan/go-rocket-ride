@@ -17,7 +17,7 @@ import (
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/originip"
 	mocks "github.com/rafael-piovesan/go-rocket-ride/v2/mocks/datastore"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
-	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -148,7 +148,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
-			Return(entity.IdempotencyKey{}, repo.ErrRecordNotFound)
+			Return(entity.IdempotencyKey{}, data.ErrRecordNotFound)
 
 		m.idemKey.On("Save", ctx, &ik).
 			Once().
@@ -174,7 +174,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 
 		m.idemKey.On("FindOne", ctx, mock.Anything, mock.Anything).
 			Once().
-			Return(entity.IdempotencyKey{}, repo.ErrRecordNotFound)
+			Return(entity.IdempotencyKey{}, data.ErrRecordNotFound)
 
 		m.idemKey.On("Save", ctx, &ik).
 			Once().

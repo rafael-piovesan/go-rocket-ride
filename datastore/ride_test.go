@@ -10,9 +10,9 @@ import (
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/data"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/db"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
-	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testfixtures"
 	"github.com/stretchr/testify/assert"
@@ -65,7 +65,7 @@ func TestRide(t *testing.T) {
 
 	t.Run("Ride not found", func(t *testing.T) {
 		_, err := store.FindOne(ctx, RideWithIdemKeyID(keyID))
-		assert.ErrorIs(t, err, repo.ErrRecordNotFound)
+		assert.ErrorIs(t, err, data.ErrRecordNotFound)
 	})
 
 	t.Run("Create Ride", func(t *testing.T) {

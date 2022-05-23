@@ -1,7 +1,7 @@
 //go:build integration
 // +build integration
 
-package repo
+package data
 
 import (
 	"context"
@@ -34,25 +34,25 @@ func TestCRUDRepository(t *testing.T) {
 	_, err = db.NewCreateTable().Model(&book{}).Exec(ctx)
 	require.NoError(t, err)
 
-	repo := New[book](db)
+	data := New[book](db)
 	books := []book{
 		{Title: "foo1", Author: "bar1"},
 		{Title: "foo2", Author: "bar2"},
 	}
 
 	t.Run("save model", func(t *testing.T) {
-		bks, err := repo.FindAll(ctx)
+		bks, err := data.FindAll(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, len(bks))
 
 		for i := range books {
-			err = repo.Save(ctx, &books[i])
+			err = data.Save(ctx, &books[i])
 			assert.NoError(t, err)
 		}
 	})
 
 	t.Run("find all", func(t *testing.T) {
-		bks, err := repo.FindAll(ctx)
+		bks, err := data.FindAll(ctx)
 		assert.NoError(t, err)
 		assert.ElementsMatch(t, books, bks)
 	})
@@ -62,14 +62,14 @@ func TestCRUDRepository(t *testing.T) {
 			return q.Where("title = ?", books[0].Title)
 		}
 
-		bks, err := repo.FindAll(ctx, c)
+		bks, err := data.FindAll(ctx, c)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(bks))
 		assert.Equal(t, books[0], bks[0])
 	})
 
 	t.Run("find one", func(t *testing.T) {
-		b, err := repo.FindOne(ctx)
+		b, err := data.FindOne(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, books[0], b)
 	})
@@ -79,16 +79,16 @@ func TestCRUDRepository(t *testing.T) {
 			return q.Where("title = ?", books[1].Title)
 		}
 
-		b, err := repo.FindOne(ctx, c)
+		b, err := data.FindOne(ctx, c)
 		assert.NoError(t, err)
 		assert.Equal(t, books[1], b)
 	})
 
 	t.Run("delete model", func(t *testing.T) {
-		err = repo.Delete(ctx, &books[0])
+		err = data.Delete(ctx, &books[0])
 		assert.NoError(t, err)
 
-		bks, err := repo.FindAll(ctx)
+		bks, err := data.FindAll(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(bks))
 		assert.Equal(t, books[1], bks[0])
@@ -96,10 +96,10 @@ func TestCRUDRepository(t *testing.T) {
 
 	t.Run("update model", func(t *testing.T) {
 		books[1].Title = "foo3"
-		err = repo.Update(ctx, &books[1])
+		err = data.Update(ctx, &books[1])
 		assert.NoError(t, err)
 
-		bks, err := repo.FindAll(ctx)
+		bks, err := data.FindAll(ctx)
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(bks))
 		assert.Equal(t, books[1], bks[0])

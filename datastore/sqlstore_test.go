@@ -12,9 +12,9 @@ import (
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/audit"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/data"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/db"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
-	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testfixtures"
 	"github.com/stretchr/testify/assert"
@@ -82,7 +82,7 @@ func TestSQLStore(t *testing.T) {
 
 	t.Run("Rollback on error", func(t *testing.T) {
 		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
-		require.ErrorIs(t, err, repo.ErrRecordNotFound)
+		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
 		err = store.Atomic(ctx, func(ds AtomicStore) error {
 			err := ds.Rides().Save(ctx, ride)
@@ -96,19 +96,19 @@ func TestSQLStore(t *testing.T) {
 
 		if assert.EqualError(t, err, "error rollback") {
 			_, err = rides.FindOne(ctx, RideWithIdemKeyID(keyID))
-			assert.ErrorIs(t, err, repo.ErrRecordNotFound)
+			assert.ErrorIs(t, err, data.ErrRecordNotFound)
 		}
 	})
 
 	t.Run("Rollback on panic with error", func(t *testing.T) {
 		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
-		require.ErrorIs(t, err, repo.ErrRecordNotFound)
+		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
 		defer func() {
 			p := recover()
 			if assert.NotNil(t, p) {
 				_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
-				assert.ErrorIs(t, err, repo.ErrRecordNotFound)
+				assert.ErrorIs(t, err, data.ErrRecordNotFound)
 			}
 		}()
 
@@ -125,13 +125,13 @@ func TestSQLStore(t *testing.T) {
 
 	t.Run("Rollback on panic without error", func(t *testing.T) {
 		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
-		require.ErrorIs(t, err, repo.ErrRecordNotFound)
+		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
 		defer func() {
 			p := recover()
 			if assert.NotNil(t, p) && assert.Equal(t, "panic rollback", p) {
 				_, err = rides.FindOne(ctx, RideWithIdemKeyID(keyID))
-				assert.ErrorIs(t, err, repo.ErrRecordNotFound)
+				assert.ErrorIs(t, err, data.ErrRecordNotFound)
 			}
 		}()
 
@@ -150,7 +150,7 @@ func TestSQLStore(t *testing.T) {
 		cancelCtx, cancel := context.WithCancel(ctx)
 
 		_, err := rides.FindOne(cancelCtx, RideWithIdemKeyID(keyID))
-		require.ErrorIs(t, err, repo.ErrRecordNotFound)
+		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
 		err = store.Atomic(ctx, func(ds AtomicStore) error {
 			err := ds.Rides().Save(cancelCtx, ride)
@@ -165,13 +165,13 @@ func TestSQLStore(t *testing.T) {
 
 		if assert.EqualError(t, err, "context canceled") {
 			_, err = rides.FindOne(ctx, RideWithIdemKeyID(keyID))
-			assert.ErrorIs(t, err, repo.ErrRecordNotFound)
+			assert.ErrorIs(t, err, data.ErrRecordNotFound)
 		}
 	})
 
 	t.Run("Commit on success", func(t *testing.T) {
 		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
-		require.ErrorIs(t, err, repo.ErrRecordNotFound)
+		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
 		err = store.Atomic(ctx, func(ds AtomicStore) error {
 			err := ds.Rides().Save(ctx, ride)

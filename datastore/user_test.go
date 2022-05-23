@@ -9,9 +9,9 @@ import (
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/data"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/db"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
-	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testfixtures"
 	"github.com/stretchr/testify/assert"
@@ -45,7 +45,7 @@ func TestUser(t *testing.T) {
 
 	t.Run("User not found", func(t *testing.T) {
 		_, err := store.FindOne(ctx, UserWithEmail(gofakeit.FarmAnimal()))
-		assert.ErrorIs(t, err, repo.ErrRecordNotFound)
+		assert.ErrorIs(t, err, data.ErrRecordNotFound)
 	})
 
 	t.Run("User found", func(t *testing.T) {
