@@ -9,7 +9,10 @@ import (
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/db"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testfixtures"
 	"github.com/stretchr/testify/assert"
@@ -22,7 +25,7 @@ func TestRide(t *testing.T) {
 	// database up
 	dsn, terminate, err := testcontainer.NewPostgresContainer()
 	require.NoError(t, err)
-	defer terminate(ctx)
+	defer func() { _ = terminate(ctx) }()
 
 	// migrations up
 	err = migrate.Up(dsn, "db/migrations")
@@ -47,8 +50,8 @@ func TestRide(t *testing.T) {
 	require.NoError(t, err)
 
 	// conntect to database
-	store, err := NewStore(dsn)
-	require.NoError(t, err)
+	db, _ := db.Connect(config.Config{DBSource: dsn})
+	store := NewRide(db)
 
 	// test entity
 	ride := &entity.Ride{
@@ -61,15 +64,14 @@ func TestRide(t *testing.T) {
 	}
 
 	t.Run("Ride not found", func(t *testing.T) {
-		_, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
-		assert.ErrorIs(t, err, entity.ErrNotFound)
+		_, err := store.FindOne(ctx, RideWithIdemKeyID(keyID))
+		assert.ErrorIs(t, err, repo.ErrRecordNotFound)
 	})
 
 	t.Run("Create Ride", func(t *testing.T) {
-		res, err := store.CreateRide(ctx, ride)
+		err := store.Save(ctx, ride)
 		if assert.NoError(t, err) {
-			ride.ID = res.ID
-			assert.Equal(t, ride, res)
+			assert.Greater(t, ride.ID, int64(0))
 		}
 	})
 
@@ -77,16 +79,14 @@ func TestRide(t *testing.T) {
 		stripeID := gofakeit.UUID()
 		ride.StripeChargeID = &stripeID
 
-		res, err := store.UpdateRide(ctx, ride)
-		if assert.NoError(t, err) {
-			assert.Equal(t, ride, res)
-		}
+		err := store.Update(ctx, ride)
+		assert.NoError(t, err)
 	})
 
 	t.Run("Get Ride By Idempotency Key ID", func(t *testing.T) {
-		res, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
+		res, err := store.FindOne(ctx, RideWithIdemKeyID(keyID))
 		if assert.NoError(t, err) {
-			assert.Equal(t, ride, res)
+			assert.Equal(t, *ride, res)
 		}
 	})
 }

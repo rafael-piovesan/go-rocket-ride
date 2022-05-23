@@ -6,8 +6,8 @@ import (
 	"math"
 
 	"github.com/labstack/echo/v4"
-	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/usecase"
 )
 
 type createRequest struct {
@@ -27,19 +27,19 @@ func newCreateRequest() createRequest {
 	}
 }
 
-type RideHandler struct {
+type Ride struct {
 	*Handler
-	uc rocketride.RideUseCase
+	uc usecase.Ride
 }
 
-func NewRideHandler(uc rocketride.RideUseCase) *RideHandler {
-	return &RideHandler{
+func NewRide(uc usecase.Ride) Ride {
+	return Ride{
 		Handler: New(),
 		uc:      uc,
 	}
 }
 
-func (r *RideHandler) Create(c echo.Context) error {
+func (r Ride) Create(c echo.Context) error {
 	user, err := r.GetUserFromCtx(c)
 	if err != nil {
 		return err
@@ -65,25 +65,25 @@ func (r *RideHandler) Create(c echo.Context) error {
 		RequestPath:    c.Request().RequestURI,
 		RequestParams:  rp,
 		UserID:         user.ID,
-		User:           user,
+		User:           &user,
 	}
 
-	ik, err = r.uc.Create(c.Request().Context(), ik, rd)
+	err = r.uc.Create(c.Request().Context(), ik, rd)
 	if err != nil {
-		return r.HandleError(err)
+		return err
 	}
 
 	rCode, rBody, err := r.handleResponse(ik)
 	if err != nil {
-		return r.HandleError(err)
+		return err
 	}
 
 	return c.JSONBlob(rCode, rBody)
 }
 
-func (r *RideHandler) handleResponse(ik *entity.IdempotencyKey) (rCode int, rBody []byte, err error) {
+func (r Ride) handleResponse(ik *entity.IdempotencyKey) (rCode int, rBody []byte, err error) {
 	if ik.ResponseCode == nil || ik.ResponseBody == nil {
-		err = errors.New("invalid response")
+		err = errors.New("create ride: invalid response")
 		return
 	}
 

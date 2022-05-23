@@ -4,8 +4,8 @@ tasks:
   mock:
     desc: Generate interfaces mocks
     cmds:
-      - docker run --rm -it -v $(pwd):/src -w /src vektra/mockery --name Datastore
-      - docker run --rm -it -v $(pwd):/src -w /src vektra/mockery --name RideUseCase
+      - docker run --rm -it -v $(pwd):/src -w /src vektra/mockery --dir datastore --all --output mocks/datastore
+      - docker run --rm -it -v $(pwd):/src -w /src vektra/mockery --dir usecase --all --output mocks/usecase
 
   integration:
     desc: Run integration tests

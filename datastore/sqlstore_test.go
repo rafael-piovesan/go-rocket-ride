@@ -9,10 +9,12 @@ import (
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v6"
-	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/audit"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/db"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/migrate"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testcontainer"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/testfixtures"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +28,7 @@ func TestSQLStore(t *testing.T) {
 	// database up
 	dsn, terminate, err := testcontainer.NewPostgresContainer()
 	require.NoError(t, err)
-	defer terminate(ctx)
+	defer func() { _ = terminate(ctx) }()
 
 	// migrations up
 	err = migrate.Up(dsn, "db/migrations")
@@ -51,8 +53,9 @@ func TestSQLStore(t *testing.T) {
 	require.NoError(t, err)
 
 	// connect to database
-	store, err := NewStore(dsn)
-	require.NoError(t, err)
+	db, _ := db.Connect(config.Config{DBSource: dsn})
+	store := New(db)
+	rides := NewRide(db)
 
 	// test entities
 	ride := &entity.Ride{
@@ -78,62 +81,65 @@ func TestSQLStore(t *testing.T) {
 	}
 
 	t.Run("Rollback on error", func(t *testing.T) {
-		_, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
-		require.ErrorIs(t, err, entity.ErrNotFound)
+		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+		require.ErrorIs(t, err, repo.ErrRecordNotFound)
 
-		err = store.Atomic(ctx, func(ds rocketride.Datastore) error {
-			_, err := ds.CreateRide(ctx, ride)
+		err = store.Atomic(ctx, func(ds AtomicStore) error {
+			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
-			_, err = ds.CreateAuditRecord(ctx, ar)
+			err = ds.AuditRecords().Save(ctx, ar)
 			require.NoError(t, err)
 
 			return errors.New("error rollback")
 		})
 
 		if assert.EqualError(t, err, "error rollback") {
-			_, err = store.GetRideByIdempotencyKeyID(ctx, keyID)
-			assert.ErrorIs(t, err, entity.ErrNotFound)
+			_, err = rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+			assert.ErrorIs(t, err, repo.ErrRecordNotFound)
 		}
 	})
 
 	t.Run("Rollback on panic with error", func(t *testing.T) {
-		_, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
-		require.ErrorIs(t, err, entity.ErrNotFound)
+		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+		require.ErrorIs(t, err, repo.ErrRecordNotFound)
 
-		err = store.Atomic(ctx, func(ds rocketride.Datastore) error {
-			_, err := ds.CreateRide(ctx, ride)
+		defer func() {
+			p := recover()
+			if assert.NotNil(t, p) {
+				_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+				assert.ErrorIs(t, err, repo.ErrRecordNotFound)
+			}
+		}()
+
+		_ = store.Atomic(ctx, func(ds AtomicStore) error {
+			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
-			_, err = ds.CreateAuditRecord(ctx, ar)
+			err = ds.AuditRecords().Save(ctx, ar)
 			require.NoError(t, err)
 
 			panic(errors.New("panic rollback"))
 		})
-
-		if assert.EqualError(t, err, "panic err: panic rollback") {
-			_, err = store.GetRideByIdempotencyKeyID(ctx, keyID)
-			assert.ErrorIs(t, err, entity.ErrNotFound)
-		}
 	})
 
 	t.Run("Rollback on panic without error", func(t *testing.T) {
-		_, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
-		require.ErrorIs(t, err, entity.ErrNotFound)
+		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+		require.ErrorIs(t, err, repo.ErrRecordNotFound)
 
 		defer func() {
 			p := recover()
 			if assert.NotNil(t, p) && assert.Equal(t, "panic rollback", p) {
-				_, err = store.GetRideByIdempotencyKeyID(ctx, keyID)
-				assert.ErrorIs(t, err, entity.ErrNotFound)
+				_, err = rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+				assert.ErrorIs(t, err, repo.ErrRecordNotFound)
 			}
 		}()
 
-		err = store.Atomic(ctx, func(ds rocketride.Datastore) error {
-			_, err := ds.CreateRide(ctx, ride)
+		err = store.Atomic(ctx, func(ds AtomicStore) error {
+			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
-			_, err = ds.CreateAuditRecord(ctx, ar)
+			err = ds.AuditRecords().Save(ctx, ar)
 			require.NoError(t, err)
 
 			panic("panic rollback")
@@ -143,47 +149,46 @@ func TestSQLStore(t *testing.T) {
 	t.Run("Rollback on context canceled", func(t *testing.T) {
 		cancelCtx, cancel := context.WithCancel(ctx)
 
-		_, err := store.GetRideByIdempotencyKeyID(cancelCtx, keyID)
-		require.ErrorIs(t, err, entity.ErrNotFound)
+		_, err := rides.FindOne(cancelCtx, RideWithIdemKeyID(keyID))
+		require.ErrorIs(t, err, repo.ErrRecordNotFound)
 
-		err = store.Atomic(ctx, func(ds rocketride.Datastore) error {
-			_, err := ds.CreateRide(cancelCtx, ride)
+		err = store.Atomic(ctx, func(ds AtomicStore) error {
+			err := ds.Rides().Save(cancelCtx, ride)
 			require.NoError(t, err)
 
 			cancel()
 
 			// this call should return an error due to the canceled ctx
-			_, err = ds.CreateAuditRecord(cancelCtx, ar)
+			err = ds.AuditRecords().Save(cancelCtx, ar)
 			return err
 		})
 
 		if assert.EqualError(t, err, "context canceled") {
-			_, err = store.GetRideByIdempotencyKeyID(ctx, keyID)
-			assert.ErrorIs(t, err, entity.ErrNotFound)
+			_, err = rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+			assert.ErrorIs(t, err, repo.ErrRecordNotFound)
 		}
 	})
 
 	t.Run("Commit on success", func(t *testing.T) {
-		_, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
-		require.ErrorIs(t, err, entity.ErrNotFound)
+		_, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
+		require.ErrorIs(t, err, repo.ErrRecordNotFound)
 
-		err = store.Atomic(ctx, func(ds rocketride.Datastore) error {
-			_, err := ds.CreateRide(ctx, ride)
+		err = store.Atomic(ctx, func(ds AtomicStore) error {
+			err := ds.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
-			_, err = ds.CreateAuditRecord(ctx, ar)
+			err = ds.AuditRecords().Save(ctx, ar)
 			require.NoError(t, err)
 
 			return nil
 		})
 
 		if assert.NoError(t, err) {
-			res, err := store.GetRideByIdempotencyKeyID(ctx, keyID)
+			res, err := rides.FindOne(ctx, RideWithIdemKeyID(keyID))
 			if assert.NoError(t, err) {
 				ride.ID = res.ID
-				assert.Equal(t, ride, res)
+				assert.Equal(t, *ride, res)
 			}
 		}
 	})
-
 }

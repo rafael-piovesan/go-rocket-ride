@@ -4,13 +4,22 @@ import (
 	"context"
 
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
+	"github.com/uptrace/bun"
 )
 
-func (s *sqlStore) CreateAuditRecord(ctx context.Context, ar *entity.AuditRecord) (*entity.AuditRecord, error) {
-	_, err := s.db.NewInsert().
-		Model(ar).
-		Returning("*").
-		Exec(ctx)
+type AuditRecord interface {
+	FindAll(context.Context, ...repo.SelectCriteria) ([]entity.AuditRecord, error)
+	FindOne(context.Context, ...repo.SelectCriteria) (entity.AuditRecord, error)
+	Delete(context.Context, *entity.AuditRecord) error
+	Save(context.Context, *entity.AuditRecord) error
+	Update(context.Context, *entity.AuditRecord) error
+}
 
-	return ar, err
+type auditRecordStore struct {
+	*repo.CRUDRepository[entity.AuditRecord]
+}
+
+func NewAuditRecord(db bun.IDB) AuditRecord {
+	return auditRecordStore{&repo.CRUDRepository[entity.AuditRecord]{DB: db}}
 }

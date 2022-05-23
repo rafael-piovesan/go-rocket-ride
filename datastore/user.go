@@ -2,24 +2,31 @@ package datastore
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"strings"
 
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
+	"github.com/uptrace/bun"
 )
 
-func (s *sqlStore) GetUserByEmail(ctx context.Context, e string) (*entity.User, error) {
-	user := &entity.User{}
-	err := s.db.NewSelect().
-		Model(user).
-		Where("email = ?", strings.ToLower(e)).
-		Limit(1).
-		Scan(ctx)
+type User interface {
+	FindAll(context.Context, ...repo.SelectCriteria) ([]entity.User, error)
+	FindOne(context.Context, ...repo.SelectCriteria) (entity.User, error)
+	Delete(context.Context, *entity.User) error
+	Save(context.Context, *entity.User) error
+	Update(context.Context, *entity.User) error
+}
 
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, entity.ErrNotFound
+type userStore struct {
+	*repo.CRUDRepository[entity.User]
+}
+
+func NewUser(db bun.IDB) User {
+	return userStore{&repo.CRUDRepository[entity.User]{DB: db}}
+}
+
+func UserWithEmail(e string) repo.SelectCriteria {
+	return func(q *bun.SelectQuery) *bun.SelectQuery {
+		return q.Where("email = ?", strings.ToLower(e))
 	}
-
-	return user, err
 }

@@ -3,73 +3,73 @@ package datastore
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"runtime"
 
 	"github.com/uptrace/bun"
-	"github.com/uptrace/bun/dialect/pgdialect"
-
-	// loading bun's official Postgres driver.
-	_ "github.com/uptrace/bun/driver/pgdriver"
-
-	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
 )
+
+type atomicStore struct {
+	auditRecords AuditRecord
+	idemKeys     IdempotencyKey
+	rides        Ride
+	stagedJobs   StagedJob
+	users        User
+}
+
+type AtomicStore interface {
+	AuditRecords() AuditRecord
+	IdempotencyKeys() IdempotencyKey
+	Rides() Ride
+	StagedJobs() StagedJob
+	Users() User
+}
+
+func (a *atomicStore) AuditRecords() AuditRecord {
+	return a.auditRecords
+}
+
+func (a *atomicStore) IdempotencyKeys() IdempotencyKey {
+	return a.idemKeys
+}
+
+func (a *atomicStore) Rides() Ride {
+	return a.rides
+}
+
+func (a *atomicStore) StagedJobs() StagedJob {
+	return a.stagedJobs
+}
+
+func (a *atomicStore) Users() User {
+	return a.users
+}
+
+type AtomicBlock func(store AtomicStore) error
 
 type sqlStore struct {
 	conn *bun.DB
 	db   bun.IDB
 }
 
-func NewStore(dsn string) (s rocketride.Datastore, err error) {
-	sqldb, err := sql.Open("pg", dsn)
-	if err != nil {
-		return nil, err
-	}
+type Store interface {
+	Atomic(context.Context, AtomicBlock) error
+}
 
-	db := bun.NewDB(sqldb, pgdialect.New())
-	s = &sqlStore{
+func New(db *bun.DB) Store {
+	return &sqlStore{
 		conn: db,
 		db:   db,
 	}
-	return
 }
 
-func (s *sqlStore) Atomic(ctx context.Context, fn func(store rocketride.Datastore) error) (err error) {
-	tx, err := s.conn.BeginTx(ctx, &sql.TxOptions{})
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if p := recover(); p != nil {
-			_ = tx.Rollback()
-
-			switch e := p.(type) {
-			case runtime.Error:
-				panic(e)
-			case error:
-				err = fmt.Errorf("panic err: %v", p)
-				return
-			default:
-				panic(e)
-			}
+func (s *sqlStore) Atomic(ctx context.Context, fn AtomicBlock) error {
+	return s.conn.RunInTx(ctx, &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
+		newStore := &atomicStore{
+			auditRecords: NewAuditRecord(tx),
+			idemKeys:     NewIdempotencyKey(tx),
+			rides:        NewRide(tx),
+			stagedJobs:   NewStagedJob(tx),
+			users:        NewUser(tx),
 		}
-		if err != nil {
-			if rbErr := tx.Rollback(); rbErr != nil {
-				err = fmt.Errorf("tx err: %v, rb err: %v", err, rbErr)
-			}
-		} else {
-			err = tx.Commit()
-		}
-	}()
-
-	// TODO: check if it works for nested transactions as well
-	newStore := &sqlStore{
-		conn: s.conn,
-		db:   tx,
-	}
-	err = fn(newStore)
-	return err
+		return fn(newStore)
+	})
 }
-
-var _ rocketride.Datastore = (*sqlStore)(nil)

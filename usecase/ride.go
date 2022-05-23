@@ -12,88 +12,85 @@ import (
 	"github.com/stripe/stripe-go/v72"
 	"github.com/stripe/stripe-go/v72/charge"
 
-	rocketride "github.com/rafael-piovesan/go-rocket-ride/v2"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/datastore"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/audit"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/idempotency"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/originip"
 	"github.com/rafael-piovesan/go-rocket-ride/v2/entity/stagedjob"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/config"
+	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/repo"
 )
 
-type rideUseCase struct {
-	cfg   rocketride.Config
-	store rocketride.Datastore
+type rideUC struct {
+	cfg     config.Config
+	store   datastore.Store
+	ikStore datastore.IdempotencyKey
 }
 
-func NewRideUseCase(cfg rocketride.Config, ds rocketride.Datastore) rocketride.RideUseCase {
+type Ride interface {
+	Create(context.Context, *entity.IdempotencyKey, *entity.Ride) error
+}
+
+func NewRide(cfg config.Config, store datastore.Store, ikStore datastore.IdempotencyKey) Ride {
 	// setup Stripe's key
 	stripe.Key = cfg.StripeKey
 
-	return &rideUseCase{
-		cfg:   cfg,
-		store: ds,
+	return &rideUC{
+		cfg:     cfg,
+		store:   store,
+		ikStore: ikStore,
 	}
 }
 
-func (r *rideUseCase) Create(
-	ctx context.Context,
-	ik *entity.IdempotencyKey,
-	rd *entity.Ride,
-) (*entity.IdempotencyKey, error) {
-	var key *entity.IdempotencyKey
-	var ride *entity.Ride
-	var err error
-
-	key, err = r.getIdempotencyKey(ctx, ik)
+func (r *rideUC) Create(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
+	key, err := r.getIdempotencyKey(ctx, ik)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
+	*ik = key
 
 	defer func() {
 		// If we're leaving under an error condition, try to unlock the idempotency
 		// key right away so that another request can try again.
-		if err != nil && key != nil {
-			r.unlockIdempotencyKey(ctx, key)
+		if err != nil && ik != nil {
+			r.unlockIdempotencyKey(ctx, ik)
 		}
 	}()
 
 	for {
-		switch key.RecoveryPoint {
+		switch ik.RecoveryPoint {
 		case idempotency.RecoveryPointStarted:
-			ride, err = r.createRide(ctx, key, rd)
+			err = r.createRide(ctx, ik, rd)
 			if err != nil {
-				return nil, err
+				return err
 			}
 
 		case idempotency.RecoveryPointCreated:
-			err = r.createCharge(ctx, key, ride)
+			err = r.createCharge(ctx, ik, rd)
 			if err != nil {
-				return nil, err
+				return err
 			}
 
 		case idempotency.RecoveryPointCharged:
-			err = r.sendReceipt(ctx, key)
+			err = r.sendReceipt(ctx, ik)
 			if err != nil {
-				return nil, err
+				return err
 			}
 
 		case idempotency.RecoveryPointFinished:
-			return key, nil
+			return nil
 
 		default:
-			return nil, entity.ErrIdemKeyUnknownRecoveryPoint
+			return entity.ErrIdemKeyUnknownRecoveryPoint
 		}
 	}
 }
 
-func (r *rideUseCase) getIdempotencyKey(
-	ctx context.Context,
-	ik *entity.IdempotencyKey,
-) (*entity.IdempotencyKey, error) {
+func (r *rideUC) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) (entity.IdempotencyKey, error) {
 	var err error
-
-	// may be created on this request or retrieved if it already exists
-	var key *entity.IdempotencyKey
+	var key entity.IdempotencyKey
 
 	// Our first atomic phase to create or update an idempotency key.
 	//
@@ -101,15 +98,20 @@ func (r *rideUseCase) getIdempotencyKey(
 	// close proximity, one of the two will be aborted by Postgres because we're
 	// using a transaction with SERIALIZABLE isolation level. It may not look
 	// it, but this code is safe from races.
-	err = r.store.Atomic(ctx, func(ds rocketride.Datastore) error {
-		key, err = ds.GetIdempotencyKey(ctx, ik.IdempotencyKey, ik.UserID)
+	err = r.store.Atomic(ctx, func(ds datastore.AtomicStore) error {
+		key, err = ds.IdempotencyKeys().FindOne(
+			ctx,
+			datastore.IdemKeyWithKey(ik.IdempotencyKey),
+			datastore.IdemKeyWithUserID(ik.UserID),
+		)
 		if err != nil {
-			if errors.Is(err, entity.ErrNotFound) {
+			if errors.Is(err, repo.ErrRecordNotFound) {
 				now := time.Now().UTC()
 				ik.LastRunAt = now
 				ik.LockedAt = &now
 				ik.RecoveryPoint = idempotency.RecoveryPointStarted
-				key, err = ds.CreateIdempotencyKey(ctx, ik)
+				err = ds.IdempotencyKeys().Save(ctx, ik)
+				key = *ik
 			}
 			return err
 		}
@@ -117,11 +119,11 @@ func (r *rideUseCase) getIdempotencyKey(
 		// Unmarshal the JSON returned from datastore, so we're able to
 		// properly compare it against the request.
 		rd1, rd2 := entity.Ride{}, entity.Ride{}
-		if err := json.Unmarshal(ik.RequestParams, &rd1); err != nil {
+		if err := json.Unmarshal(key.RequestParams, &rd1); err != nil {
 			return entity.ErrIdemKeyParamsMismatch
 		}
 
-		if err := json.Unmarshal(key.RequestParams, &rd2); err != nil {
+		if err := json.Unmarshal(ik.RequestParams, &rd2); err != nil {
 			return entity.ErrIdemKeyParamsMismatch
 		}
 
@@ -144,7 +146,7 @@ func (r *rideUseCase) getIdempotencyKey(
 			now := time.Now().UTC()
 			key.LastRunAt = now
 			key.LockedAt = &now
-			key, err = ds.UpdateIdempotencyKey(ctx, key)
+			err = ds.IdempotencyKeys().Update(ctx, &key)
 			return err
 		}
 		return nil
@@ -153,20 +155,13 @@ func (r *rideUseCase) getIdempotencyKey(
 	return key, err
 }
 
-func (r *rideUseCase) createRide(
-	ctx context.Context,
-	ik *entity.IdempotencyKey,
-	rd *entity.Ride,
-) (*entity.Ride, error) {
-	var err error
-	var ride *entity.Ride
-
+func (r *rideUC) createRide(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
 	oip := originip.FromCtx(ctx)
 
-	err = r.store.Atomic(ctx, func(ds rocketride.Datastore) error {
+	err := r.store.Atomic(ctx, func(ds datastore.AtomicStore) error {
 		rd.IdempotencyKeyID = &ik.ID
 		rd.UserID = ik.UserID
-		ride, err = ds.CreateRide(ctx, rd)
+		err := ds.Rides().Save(ctx, rd)
 		if err != nil {
 			return err
 		}
@@ -177,35 +172,34 @@ func (r *rideUseCase) createRide(
 			CreatedAt:    time.Now().UTC(),
 			Data:         ik.RequestParams,
 			OriginIP:     oip.IP,
-			ResourceID:   ride.ID,
+			ResourceID:   rd.ID,
 			ResourceType: audit.ResourceTypeRide,
 			UserID:       ik.UserID,
 		}
-		_, err = ds.CreateAuditRecord(ctx, ar)
+		err = ds.AuditRecords().Save(ctx, ar)
 		if err != nil {
 			return err
 		}
 
 		ik.RecoveryPoint = idempotency.RecoveryPointCreated
-		_, err = ds.UpdateIdempotencyKey(ctx, ik)
-		return err
+		return ds.IdempotencyKeys().Update(ctx, ik)
 	})
 
-	return ride, err
+	return err
 }
 
-func (r *rideUseCase) createCharge(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
+func (r *rideUC) createCharge(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
 	var err error
-	var ride *entity.Ride
+	var ride entity.Ride
 
-	err = r.store.Atomic(ctx, func(ds rocketride.Datastore) error {
+	err = r.store.Atomic(ctx, func(ds datastore.AtomicStore) error {
 		handleStripeErr := func(resCode *idempotency.ResponseCode, resBody *idempotency.ResponseBody) {
 			ik.LockedAt = nil
 			ik.ResponseCode = resCode
 			ik.ResponseBody = resBody
 			// short-circuit to the final state
 			ik.RecoveryPoint = idempotency.RecoveryPointFinished
-			_, err = ds.UpdateIdempotencyKey(ctx, ik)
+			err = ds.IdempotencyKeys().Update(ctx, ik)
 			if err != nil {
 				log.Errorf("error updating idem key after stripe error: %v", err)
 			}
@@ -213,12 +207,12 @@ func (r *rideUseCase) createCharge(ctx context.Context, ik *entity.IdempotencyKe
 
 		// check if we're restarting from a Recovery Point and retrieve a ride from db
 		if rd == nil {
-			ride, err = ds.GetRideByIdempotencyKeyID(ctx, ik.ID)
+			ride, err = ds.Rides().FindOne(ctx, datastore.RideWithIdemKeyID(ik.ID))
 			if err != nil {
 				return err
 			}
 		} else {
-			ride = rd
+			ride = *rd
 		}
 
 		// Pass through our own unique ID rather than the value transmitted
@@ -267,23 +261,22 @@ func (r *rideUseCase) createCharge(ctx context.Context, ik *entity.IdempotencyKe
 
 		ride.StripeChargeID = &c.ID
 		log.Debugf("stripe charge id: %v", c.ID)
-		_, err = ds.UpdateRide(ctx, ride)
+		err = ds.Rides().Update(ctx, &ride)
 		if err != nil {
 			return err
 		}
 
 		ik.RecoveryPoint = idempotency.RecoveryPointCharged
-		_, err = ds.UpdateIdempotencyKey(ctx, ik)
-		return err
+		return ds.IdempotencyKeys().Update(ctx, ik)
 	})
 	return err
 }
 
-func (r *rideUseCase) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey) error {
+func (r *rideUC) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey) error {
 	// Send a receipt asynchronously by adding an entry to the staged_jobs
 	// table. By funneling the job through Postgres, we make this
 	// operation transaction-safe.
-	err := r.store.Atomic(ctx, func(ds rocketride.Datastore) error {
+	err := r.store.Atomic(ctx, func(ds datastore.AtomicStore) error {
 		jobArgs := stagedjob.JobArgReceipt{
 			Amount:   int64(20),
 			Currency: "usd",
@@ -299,7 +292,7 @@ func (r *rideUseCase) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey
 			JobName: stagedjob.JobNameSendReceipt,
 			JobArgs: args,
 		}
-		_, err = ds.CreateStagedJob(ctx, sj)
+		err = ds.StagedJobs().Save(ctx, sj)
 		if err != nil {
 			return err
 		}
@@ -311,18 +304,15 @@ func (r *rideUseCase) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey
 		ik.ResponseCode = &resCode
 		ik.ResponseBody = &resBody
 		ik.RecoveryPoint = idempotency.RecoveryPointFinished
-		_, err = ds.UpdateIdempotencyKey(ctx, ik)
-		return err
+		return ds.IdempotencyKeys().Update(ctx, ik)
 	})
 	return err
 }
 
-func (r *rideUseCase) unlockIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) {
+func (r *rideUC) unlockIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) {
 	ik.LockedAt = nil
-	_, err := r.store.UpdateIdempotencyKey(ctx, ik)
+	err := r.ikStore.Update(ctx, ik)
 	if err != nil {
 		log.Errorf("unlock idem key error: %v", err)
 	}
 }
-
-var _ rocketride.RideUseCase = (*rideUseCase)(nil)
