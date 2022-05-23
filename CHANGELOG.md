@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/rafael-piovesan/go-rocket-ride/compare/v2.1.0...v2.2.0) (2022-05-23)
+
+
+### Features
+
+* move from repo to crud store ([c136dad](https://github.com/rafael-piovesan/go-rocket-ride/commit/c136dadf3e9fcd1f8f862b9a1f5758c92813096f))
+
 ## [2.1.0](https://github.com/rafael-piovesan/go-rocket-ride/compare/v2.0.0...v2.1.0) (2022-05-23)
 
 
