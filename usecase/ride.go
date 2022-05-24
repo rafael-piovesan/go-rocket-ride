@@ -45,12 +45,10 @@ func NewRide(cfg config.Config, uow uow.UnitOfWork, iks datastore.IdempotencyKey
 }
 
 func (r *ride) Create(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
-	key, err := r.getIdempotencyKey(ctx, ik)
+	err := r.setIdempotencyKey(ctx, ik)
 	if err != nil {
 		return err
 	}
-
-	*ik = key
 
 	defer func() {
 		// If we're leaving under an error condition, try to unlock the idempotency
@@ -89,7 +87,7 @@ func (r *ride) Create(ctx context.Context, ik *entity.IdempotencyKey, rd *entity
 	}
 }
 
-func (r *ride) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) (entity.IdempotencyKey, error) {
+func (r *ride) setIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) error {
 	var err error
 	var key entity.IdempotencyKey
 
@@ -112,7 +110,6 @@ func (r *ride) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey)
 				ik.LockedAt = &now
 				ik.RecoveryPoint = idempotency.RecoveryPointStarted
 				err = uows.IdempotencyKeys().Save(ctx, ik)
-				key = *ik
 			}
 			return err
 		}
@@ -150,10 +147,13 @@ func (r *ride) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey)
 			err = uows.IdempotencyKeys().Update(ctx, &key)
 			return err
 		}
+		// update the reference with data from persistence layer
+		*ik = key
+
 		return nil
 	})
 
-	return key, err
+	return err
 }
 
 func (r *ride) createRide(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {

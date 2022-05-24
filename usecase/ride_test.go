@@ -127,7 +127,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 			Once().
 			Return(entity.IdempotencyKey{}, retErr)
 
-		_, err := uc.getIdempotencyKey(ctx, &ik)
+		err := uc.setIdempotencyKey(ctx, &ik)
 
 		assert.Equal(t, retErr, err)
 		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
@@ -154,7 +154,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 			Once().
 			Return(retErr)
 
-		_, err := uc.getIdempotencyKey(ctx, &ik)
+		err := uc.setIdempotencyKey(ctx, &ik)
 
 		assert.Equal(t, retErr, err)
 		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
@@ -180,13 +180,13 @@ func TestGetIdempotencyKey(t *testing.T) {
 			Once().
 			Return(nil)
 
-		idk, err := uc.getIdempotencyKey(ctx, &ik)
+		err := uc.setIdempotencyKey(ctx, &ik)
 
 		assert.NoError(t, err)
-		assert.Equal(t, idempotency.RecoveryPointStarted, idk.RecoveryPoint)
-		assert.GreaterOrEqual(t, time.Now().UTC(), idk.LastRunAt)
-		if assert.NotNil(t, idk.LockedAt) {
-			assert.GreaterOrEqual(t, time.Now().UTC(), *idk.LockedAt)
+		assert.Equal(t, idempotency.RecoveryPointStarted, ik.RecoveryPoint)
+		assert.GreaterOrEqual(t, time.Now().UTC(), ik.LastRunAt)
+		if assert.NotNil(t, ik.LockedAt) {
+			assert.GreaterOrEqual(t, time.Now().UTC(), *ik.LockedAt)
 		}
 		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
 		m.idemKey.AssertNumberOfCalls(t, "Save", 1)
@@ -223,7 +223,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 			Once().
 			Return(retIK, nil)
 
-		_, err = uc.getIdempotencyKey(ctx, &ik)
+		err = uc.setIdempotencyKey(ctx, &ik)
 
 		assert.Equal(t, entity.ErrIdemKeyParamsMismatch, err)
 		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
@@ -253,7 +253,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 			Once().
 			Return(retIK, nil)
 
-		_, err := uc.getIdempotencyKey(ctx, &ik)
+		err := uc.setIdempotencyKey(ctx, &ik)
 
 		assert.Equal(t, entity.ErrIdemKeyRequestInProgress, err)
 		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
@@ -291,7 +291,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 			Once().
 			Return(retErr)
 
-		_, err := uc.getIdempotencyKey(ctx, &ik)
+		err := uc.setIdempotencyKey(ctx, &ik)
 
 		assert.Equal(t, retErr, err)
 		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
@@ -328,7 +328,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 			Once().
 			Return(nil)
 
-		_, err := uc.getIdempotencyKey(ctx, &ik)
+		err := uc.setIdempotencyKey(ctx, &ik)
 
 		assert.NoError(t, err)
 		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
@@ -352,7 +352,7 @@ func TestGetIdempotencyKey(t *testing.T) {
 			Once().
 			Return(ik, nil)
 
-		_, err := uc.getIdempotencyKey(ctx, &ik)
+		err := uc.setIdempotencyKey(ctx, &ik)
 
 		assert.NoError(t, err)
 		m.idemKey.AssertNumberOfCalls(t, "FindOne", 1)
