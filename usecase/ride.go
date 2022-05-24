@@ -23,7 +23,7 @@ import (
 	"github.com/rafael-piovesan/go-rocket-ride/v2/pkg/data"
 )
 
-type rideUC struct {
+type ride struct {
 	cfg config.Config
 	uow uow.UnitOfWork
 	iks datastore.IdempotencyKey
@@ -37,14 +37,14 @@ func NewRide(cfg config.Config, uow uow.UnitOfWork, iks datastore.IdempotencyKey
 	// setup Stripe's key
 	stripe.Key = cfg.StripeKey
 
-	return &rideUC{
+	return &ride{
 		cfg: cfg,
 		uow: uow,
 		iks: iks,
 	}
 }
 
-func (r *rideUC) Create(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
+func (r *ride) Create(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
 	key, err := r.getIdempotencyKey(ctx, ik)
 	if err != nil {
 		return err
@@ -89,7 +89,7 @@ func (r *rideUC) Create(ctx context.Context, ik *entity.IdempotencyKey, rd *enti
 	}
 }
 
-func (r *rideUC) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) (entity.IdempotencyKey, error) {
+func (r *ride) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) (entity.IdempotencyKey, error) {
 	var err error
 	var key entity.IdempotencyKey
 
@@ -156,7 +156,7 @@ func (r *rideUC) getIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKe
 	return key, err
 }
 
-func (r *rideUC) createRide(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
+func (r *ride) createRide(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
 	oip := originip.FromCtx(ctx)
 
 	err := r.uow.Do(ctx, func(uows uow.UnitOfWorkStore) error {
@@ -189,7 +189,7 @@ func (r *rideUC) createRide(ctx context.Context, ik *entity.IdempotencyKey, rd *
 	return err
 }
 
-func (r *rideUC) createCharge(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
+func (r *ride) createCharge(ctx context.Context, ik *entity.IdempotencyKey, rd *entity.Ride) error {
 	var err error
 	var ride entity.Ride
 
@@ -273,7 +273,7 @@ func (r *rideUC) createCharge(ctx context.Context, ik *entity.IdempotencyKey, rd
 	return err
 }
 
-func (r *rideUC) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey) error {
+func (r *ride) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey) error {
 	// Send a receipt asynchronously by adding an entry to the staged_jobs
 	// table. By funneling the job through Postgres, we make this
 	// operation transaction-safe.
@@ -310,7 +310,7 @@ func (r *rideUC) sendReceipt(ctx context.Context, ik *entity.IdempotencyKey) err
 	return err
 }
 
-func (r *rideUC) unlockIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) {
+func (r *ride) unlockIdempotencyKey(ctx context.Context, ik *entity.IdempotencyKey) {
 	ik.LockedAt = nil
 	err := r.iks.Update(ctx, ik)
 	if err != nil {

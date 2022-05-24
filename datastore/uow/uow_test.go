@@ -55,7 +55,7 @@ func TestSQLStore(t *testing.T) {
 
 	// connect to database
 	db, _ := db.Connect(config.Config{DBSource: dsn})
-	store := New(db)
+	uow := New(db)
 	rides := datastore.NewRide(db)
 
 	// test entities
@@ -85,11 +85,11 @@ func TestSQLStore(t *testing.T) {
 		_, err := rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
-		err = store.Do(ctx, func(ds UnitOfWorkStore) error {
-			err := ds.Rides().Save(ctx, ride)
+		err = uow.Do(ctx, func(uows UnitOfWorkStore) error {
+			err := uows.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
-			err = ds.AuditRecords().Save(ctx, ar)
+			err = uows.AuditRecords().Save(ctx, ar)
 			require.NoError(t, err)
 
 			return errors.New("error rollback")
@@ -113,11 +113,11 @@ func TestSQLStore(t *testing.T) {
 			}
 		}()
 
-		_ = store.Do(ctx, func(ds UnitOfWorkStore) error {
-			err := ds.Rides().Save(ctx, ride)
+		_ = uow.Do(ctx, func(uows UnitOfWorkStore) error {
+			err := uows.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
-			err = ds.AuditRecords().Save(ctx, ar)
+			err = uows.AuditRecords().Save(ctx, ar)
 			require.NoError(t, err)
 
 			panic(errors.New("panic rollback"))
@@ -136,11 +136,11 @@ func TestSQLStore(t *testing.T) {
 			}
 		}()
 
-		err = store.Do(ctx, func(ds UnitOfWorkStore) error {
-			err := ds.Rides().Save(ctx, ride)
+		err = uow.Do(ctx, func(uows UnitOfWorkStore) error {
+			err := uows.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
-			err = ds.AuditRecords().Save(ctx, ar)
+			err = uows.AuditRecords().Save(ctx, ar)
 			require.NoError(t, err)
 
 			panic("panic rollback")
@@ -153,14 +153,14 @@ func TestSQLStore(t *testing.T) {
 		_, err := rides.FindOne(cancelCtx, datastore.RideWithIdemKeyID(keyID))
 		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
-		err = store.Do(ctx, func(ds UnitOfWorkStore) error {
-			err := ds.Rides().Save(cancelCtx, ride)
+		err = uow.Do(ctx, func(uows UnitOfWorkStore) error {
+			err := uows.Rides().Save(cancelCtx, ride)
 			require.NoError(t, err)
 
 			cancel()
 
 			// this call should return an error due to the canceled ctx
-			err = ds.AuditRecords().Save(cancelCtx, ar)
+			err = uows.AuditRecords().Save(cancelCtx, ar)
 			return err
 		})
 
@@ -174,11 +174,11 @@ func TestSQLStore(t *testing.T) {
 		_, err := rides.FindOne(ctx, datastore.RideWithIdemKeyID(keyID))
 		require.ErrorIs(t, err, data.ErrRecordNotFound)
 
-		err = store.Do(ctx, func(ds UnitOfWorkStore) error {
-			err := ds.Rides().Save(ctx, ride)
+		err = uow.Do(ctx, func(uows UnitOfWorkStore) error {
+			err := uows.Rides().Save(ctx, ride)
 			require.NoError(t, err)
 
-			err = ds.AuditRecords().Save(ctx, ar)
+			err = uows.AuditRecords().Save(ctx, ar)
 			require.NoError(t, err)
 
 			return nil
