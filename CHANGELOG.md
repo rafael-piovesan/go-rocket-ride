@@ -1,5 +1,12 @@
 # Changelog
 
+### [2.3.1](https://github.com/rafael-piovesan/go-rocket-ride/compare/v2.3.0...v2.3.1) (2022-05-24)
+
+
+### Bug Fixes
+
+* **uow:** remove unused var ([dbec917](https://github.com/rafael-piovesan/go-rocket-ride/commit/dbec9171a78128317427d0e7306087da69b9b9dc))
+
 ## [2.3.0](https://github.com/rafael-piovesan/go-rocket-ride/compare/v2.2.0...v2.3.0) (2022-05-23)
 
 
