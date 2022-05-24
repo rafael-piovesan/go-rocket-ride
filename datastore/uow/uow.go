@@ -16,6 +16,9 @@ type uowStore struct {
 	users        datastore.User
 }
 
+// UnitOfWorkStore provides access to datastores that can be
+// used inside an Unit-of-Work. All data changes done through
+// them will be executed atomically (inside a DB transaction).
 type UnitOfWorkStore interface {
 	AuditRecords() datastore.AuditRecord
 	IdempotencyKeys() datastore.IdempotencyKey
@@ -44,11 +47,10 @@ func (u uowStore) Users() datastore.User {
 	return u.users
 }
 
-type UnitOfWorkBlock func(store UnitOfWorkStore) error
+type UnitOfWorkBlock func(UnitOfWorkStore) error
 
 type unitOfWork struct {
 	conn *bun.DB
-	db   bun.IDB
 }
 
 type UnitOfWork interface {
@@ -56,12 +58,10 @@ type UnitOfWork interface {
 }
 
 func New(db *bun.DB) UnitOfWork {
-	return &unitOfWork{
-		conn: db,
-		db:   db,
-	}
+	return &unitOfWork{conn: db}
 }
 
+// Do executes the given UnitOfWorkBlock atomically (iniside a DB transaction).
 func (s *unitOfWork) Do(ctx context.Context, fn UnitOfWorkBlock) error {
 	return s.conn.RunInTx(ctx, &sql.TxOptions{}, func(ctx context.Context, tx bun.Tx) error {
 		newStore := &uowStore{
