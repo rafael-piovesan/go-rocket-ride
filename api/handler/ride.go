@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"math"
 
@@ -55,9 +54,6 @@ func (r Ride) Create(c echo.Context) error {
 		TargetLat: cr.TgtLat,
 		TargetLon: cr.TgtLon,
 	}
-
-	rp, _ := json.Marshal(rd)
-	ik.RequestParams = rp
 
 	err = r.uc.Create(c.Request().Context(), &ik, rd)
 	if err != nil {
