@@ -1,5 +1,12 @@
 # Changelog
 
+### [2.3.2](https://github.com/rafael-piovesan/go-rocket-ride/compare/v2.3.1...v2.3.2) (2022-05-25)
+
+
+### Bug Fixes
+
+* idem key req params handling ([89c5a4b](https://github.com/rafael-piovesan/go-rocket-ride/commit/89c5a4b0587eb8295f4c07e896185af712eccc2f))
+
 ### [2.3.1](https://github.com/rafael-piovesan/go-rocket-ride/compare/v2.3.0...v2.3.1) (2022-05-24)
 
 
