@@ -5,6 +5,7 @@
 ## Related Articles
 Read more about this project's motivations and reasonings:
 * [Go (Golang): Clean Architecture & Repositories vs Transactions](https://medium.com/@rubens.piovesan/go-golang-clean-architecture-repositories-vs-transactions-9b3b7c953463)
+* [Go (Golang): Unit of Work and Generics](https://blog.devgenius.io/go-golang-unit-of-work-and-generics-5e9fb00ec996)
 * [Go (Golang): Testing tools & tips to step up your game](https://medium.com/@rubens.piovesan/go-golang-testing-tools-tips-to-step-up-your-game-4ed165a5b3b5)
 
 ## Description
@@ -79,7 +80,7 @@ curl -i -w '\n' -X POST http://localhost:8080/ \
 
 ## Development & testing
 
-Use the provided `Makefile` to help you with dev & testing tasks:
+Use the provided `Taskfile` to help you with dev & testing tasks:
 
 ```log
 task: Available tasks for this project:
